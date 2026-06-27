@@ -268,7 +268,9 @@ body.mode-mobile .modeswitch{order:-1;align-self:center}
     <a data-view="character"><span class="ic">💪</span>きんに君 育成</a>
     <a data-view="protein"><span class="ic">🥩</span>タンパク質</a>
     <a data-view="gym"><span class="ic">📍</span>ジム設定</a>
+    <a data-view="arena"><span class="ic">⚔️</span>ライバル対戦</a>
     <a data-view="history"><span class="ic">📋</span>履歴</a>
+    <a data-view="feedback"><span class="ic">💡</span>改善フォーム</a>
   </nav>
   <div class="userbox" id="userBox" style="cursor:pointer">
     <div class="av" id="userAv">D</div>
@@ -325,8 +327,16 @@ body.mode-mobile .modeswitch{order:-1;align-self:center}
           <div id="dashGym"></div>
         </div>
         <div class="panel">
+          <h2>🔥 ライバルの活動 <span class="right" data-jump="arena">応援・対戦 →</span></h2>
+          <div id="dashRivals"></div>
+        </div>
+        <div class="panel">
           <h2>達成バッジ</h2>
           <div id="dashBadges" class="chips"></div>
+        </div>
+        <div class="panel">
+          <h2>💡 アプリ改善フォーム <span class="right" data-jump="feedback">送る →</span></h2>
+          <p style="font-size:12px;color:var(--sub)">使ってみて「こうしたい」があれば教えてください。開発に届きます。</p>
         </div>
       </div>
     </div>
@@ -345,8 +355,16 @@ body.mode-mobile .modeswitch{order:-1;align-self:center}
           <div class="chips" id="partChips"></div>
         </div>
         <div class="field">
-          <label>種目（このジムで実施可能なもの）</label>
+          <label>種目（このジムの器具＋自分で作った種目）</label>
           <select id="exSelect"></select>
+        </div>
+        <div class="field" style="background:#101013;border:1px solid var(--line);border-radius:11px;padding:12px">
+          <label>✏️ 自分だけのオリジナル種目を作る（選択中の部位に追加）</label>
+          <div style="display:flex;gap:8px">
+            <input type="text" id="customExName" placeholder="例：アーノルドプレス" style="flex:1">
+            <button class="btn btn-gold" id="customExAdd" style="white-space:nowrap;padding:10px 14px">＋ 追加</button>
+          </div>
+          <div class="chips" id="customExList" style="margin-top:10px"></div>
         </div>
         <div class="row3">
           <div class="field"><label>重量 (kg)</label><input type="number" id="inW" value="40" min="0" step="0.5"></div>
@@ -354,6 +372,9 @@ body.mode-mobile .modeswitch{order:-1;align-self:center}
           <div class="field"><label>セット</label><input type="number" id="inS" value="3" min="1"></div>
         </div>
         <div class="field"><label>メモ</label><input type="text" id="inMemo" placeholder="調子良し / PR更新 など"></div>
+        <label class="eqchk" id="boostRow" style="display:none;margin-bottom:12px;border-color:var(--gold-dim);color:var(--gold2)">
+          <input type="checkbox" id="useCandy"> 🍬 強化の飴を使う（このトレーニングのレベルを2倍）　<span id="candyCount" style="color:var(--sub)"></span>
+        </label>
         <button class="btn btn-gold" id="saveRec" style="width:100%">💪 この種目を記録する</button>
 
         <div style="border-top:1px solid var(--line);margin:20px 0 14px"></div>
@@ -393,6 +414,14 @@ body.mode-mobile .modeswitch{order:-1;align-self:center}
         <div style="border-top:1px solid var(--line);margin:6px 0 14px"></div>
         <label style="font-size:12px;font-weight:700;color:var(--sub)">種目を追加</label>
         <div class="field" style="margin-top:6px"><div class="chips" id="menuPartChips"></div></div>
+        <div class="field" style="background:#101013;border:1px solid var(--line);border-radius:11px;padding:12px">
+          <label>✏️ この部位に新しい種目を追加（いくつでもOK）</label>
+          <div style="display:flex;gap:8px">
+            <input type="text" id="menuCustomName" placeholder="例：インクラインダンベルプレス" style="flex:1">
+            <button class="btn btn-gold" id="menuCustomAdd" style="white-space:nowrap;padding:10px 14px">＋ 種目</button>
+          </div>
+          <div class="chips" id="menuCustomList" style="margin-top:10px"></div>
+        </div>
         <div class="field"><select id="menuExSelect"></select></div>
         <div class="row3">
           <div class="field"><label>重量(kg)</label><input type="number" id="menuW" value="40" step="0.5"></div>
@@ -500,6 +529,65 @@ body.mode-mobile .modeswitch{order:-1;align-self:center}
       <div id="historyTable"></div>
     </div>
   </section>
+
+  <!-- ========== ARENA (rivals) ========== -->
+  <section class="view" id="view-arena">
+    <div class="grid">
+      <div class="panel">
+        <h2>⚔️ ライバル対戦</h2>
+        <p style="font-size:12px;color:var(--sub);margin:-8px 0 12px">
+          ライバルを<b style="color:var(--gold2)">応援（1日1人）</b>するとお礼に強化の飴がもらえます。<b style="color:var(--gold2)">腕相撲（3日に1回）</b>で勝負！からだ全体＋部位レベルの合計が高い方の勝率が70%。負けたら翌日タンパク質2倍！
+        </p>
+        <div id="arenaInfo" style="margin-bottom:14px"></div>
+        <div id="arenaList"></div>
+      </div>
+      <div class="panel">
+        <h2>🍬 強化の飴とは？</h2>
+        <p style="font-size:13px;color:var(--sub);line-height:1.7">
+          ・ライバルから<b style="color:var(--gold2)">エール（応援）</b>をもらうと1個もらえます。<br>
+          ・トレーニング記録のときに使うと、<b style="color:var(--gold2)">そのトレーニングのレベル上昇が2倍</b>になります（その部位の育成が1日分多く進む）。<br>
+          ・「トレーニング記録」画面の保存ボタン上に、飴を持っているとチェック欄が出ます。
+        </p>
+        <h2 style="margin-top:20px">💪 腕相撲のルール</h2>
+        <p style="font-size:13px;color:var(--sub);line-height:1.7">
+          ・挑戦は<b style="color:var(--gold2)">3日に1回</b>まで。<br>
+          ・勝敗は<b style="color:var(--gold2)">「からだ全体レベル＋全部位レベルの合計（パワー）」</b>で決定。合計が高い方の勝率が70%。<br>
+          ・負けた人は<b style="color:var(--red)">翌日のタンパク質目標が2倍</b>になり、2倍取らないと達成できません。
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========== FEEDBACK ========== -->
+  <section class="view" id="view-feedback">
+    <div class="grid">
+      <div class="panel">
+        <h2>💡 アプリ改善フォーム</h2>
+        <p style="font-size:12px;color:var(--sub);margin:-8px 0 16px">
+          「こんな機能がほしい」「ここを直してほしい」を送ってください。内容は開発者(Claude)に報告されます。
+        </p>
+        <div class="field">
+          <label>種類</label>
+          <div class="chips" id="fbTypeChips">
+            <div class="chip on" data-fbtype="要望">💡 要望</div>
+            <div class="chip" data-fbtype="バグ">🐛 不具合</div>
+            <div class="chip" data-fbtype="感想">💬 感想</div>
+          </div>
+        </div>
+        <div class="field"><label>内容</label>
+          <textarea id="fbText" rows="5" placeholder="例：体重の推移グラフがほしい！" style="width:100%;background:#0e0e11;border:1px solid var(--line);color:var(--txt);padding:11px 13px;border-radius:10px;font-size:14px;font-family:inherit;resize:vertical"></textarea>
+        </div>
+        <button class="btn btn-gold" id="fbSend" style="width:100%">📨 送信する</button>
+        <p style="font-size:11px;color:var(--sub);margin-top:10px">
+          ※このアプリは端末内で動くため、下の「Claude報告用にコピー」でテキストをコピーし、Claudeに貼り付けると確実に開発へ届きます。
+        </p>
+      </div>
+      <div class="panel">
+        <h2>送信した要望 <span class="right" id="fbCopy">📋 Claude報告用にコピー</span></h2>
+        <div id="fbList"></div>
+      </div>
+    </div>
+  </section>
 </main>
 
 <!-- ===== Bottom Tab Bar (mobile) ===== -->
@@ -510,6 +598,7 @@ body.mode-mobile .modeswitch{order:-1;align-self:center}
     <a data-view="menu"><span class="ic">📝</span>メニュー</a>
     <a data-view="character"><span class="ic">💪</span>きんに君</a>
     <a data-view="protein"><span class="ic">🥩</span>タンパク</a>
+    <a data-view="arena"><span class="ic">⚔️</span>対戦</a>
     <a data-view="gym"><span class="ic">📍</span>ジム</a>
     <a data-view="history"><span class="ic">📋</span>履歴</a>
   </div>
@@ -563,7 +652,20 @@ body.mode-mobile .modeswitch{order:-1;align-self:center}
       <div class="field"><label>回数</label><input type="number" id="mR" value="10"></div>
       <div class="field"><label>セット</label><input type="number" id="mS" value="3"></div>
     </div>
+    <label class="eqchk" id="mBoostRow" style="display:none;margin-bottom:12px;border-color:var(--gold-dim);color:var(--gold2)">
+      <input type="checkbox" id="mUseCandy"> 🍬 強化の飴を使う（レベル2倍）<span id="mCandyCount" style="color:var(--sub)"></span>
+    </label>
     <button class="btn btn-gold" id="mSave" style="width:100%">💪 記録して応援してもらう</button>
+  </div>
+</div>
+
+<!-- ===== Battle Result Modal ===== -->
+<div class="overlay" id="battleModal">
+  <div class="modal" style="max-width:420px">
+    <span class="x" data-bclose>×</span>
+    <h3 style="text-align:center">💪 腕相撲バトル</h3>
+    <div id="battleModalBody" style="margin:14px 0"></div>
+    <button class="btn btn-gold" id="battleOk" style="width:100%">OK</button>
   </div>
 </div>
 
@@ -673,15 +775,16 @@ const GYMS=[
 
 /* =================== STATE (multi-user) =================== */
 const LS="ironlog_v2", LS_OLD="ironlog_v1";
-function blankUser(gender){return {gender:gender||"male",trainings:[],protein:[],bw:gender==="female"?55:72,gym:"full",customGyms:[],menus:[],mode:"mobile"};}
-function normUser(u,gender){u.gender=u.gender||gender||"male";if(!u.menus)u.menus=[];if(!u.customGyms)u.customGyms=[];if(!u.mode)u.mode="mobile";if(u.bw==null)u.bw=72;if(!u.trainings)u.trainings=[];if(!u.protein)u.protein=[];return u;}
+function blankUser(gender){return {gender:gender||"male",trainings:[],protein:[],bw:gender==="female"?55:72,gym:"full",customGyms:[],menus:[],customExercises:[],mode:"mobile",lastSeen:Date.now(),candy:0,bonus:{},lastYellDate:null,lastBattleDate:null,proteinPenalty:null,lastEventTs:0};}
+function normUser(u,gender){u.gender=u.gender||gender||"male";if(!u.menus)u.menus=[];if(!u.customGyms)u.customGyms=[];if(!u.customExercises)u.customExercises=[];if(!u.mode)u.mode="mobile";if(u.bw==null)u.bw=72;if(!u.trainings)u.trainings=[];if(!u.protein)u.protein=[];if(u.lastSeen==null)u.lastSeen=Date.now();if(u.candy==null)u.candy=0;if(!u.bonus)u.bonus={};if(u.lastYellDate===undefined)u.lastYellDate=null;if(u.lastBattleDate===undefined)u.lastBattleDate=null;if(u.proteinPenalty===undefined)u.proteinPenalty=null;if(u.lastEventTs==null)u.lastEventTs=0;return u;}
+function normRoot(d){if(!d.feed)d.feed=[];if(!d.feedback)d.feedback=[];if(!d.events)d.events=[];return d;}
 function loadRoot(){
-  try{const d=JSON.parse(localStorage.getItem(LS));if(d&&d.users){Object.keys(d.users).forEach(k=>normUser(d.users[k]));return d;}}catch(e){}
+  try{const d=JSON.parse(localStorage.getItem(LS));if(d&&d.users){Object.keys(d.users).forEach(k=>normUser(d.users[k]));return normRoot(d);}}catch(e){}
   // v1(単一ユーザー)からの移行：既存データを「Daichi」として引き継ぐ
   try{const old=JSON.parse(localStorage.getItem(LS_OLD));
-    if(old&&(old.trainings||old.protein)){return {current:"Daichi",users:{"Daichi":normUser(old,"male")}};}
+    if(old&&(old.trainings||old.protein)){return normRoot({current:"Daichi",users:{"Daichi":normUser(old,"male")}});}
   }catch(e){}
-  return {current:null,users:{}};
+  return normRoot({current:null,users:{}});
 }
 let ROOT=loadRoot();
 let S=ROOT.current?ROOT.users[ROOT.current]:blankUser("male"); // ログイン前は仮state
@@ -695,11 +798,15 @@ function currentGym(){
 }
 function gymHas(eq){const g=currentGym();return g.eq.includes(eq);}
 function exAvailable(ex){return ex.req.every(r=>r==="bodyweight"||gymHas(r));}
-function partDays(pk){return new Set(S.trainings.filter(t=>t.p===pk).map(t=>t.date)).size;}
+function rawPartDays(u,pk){return new Set(u.trainings.filter(t=>t.p===pk).map(t=>t.date)).size;}
+function partDaysOf(u,pk){return rawPartDays(u,pk)+((u.bonus&&u.bonus[pk])||0);} // 強化の飴でブースト
+function partDays(pk){return partDaysOf(S,pk);}
 function levelFromDays(d){let lv=0;for(const m of MILESTONES)if(d>=m)lv++;return lv;}
 function nextMile(d){for(const m of MILESTONES)if(d<m)return m;return null;}
 function proteinDays(){return S.protein.length;}
-function bodyLevel(){return levelFromDays(proteinDays());}
+function bodyLevelOf(u){return levelFromDays((u.protein||[]).length);}
+function bodyLevel(){return bodyLevelOf(S);}
+function powerScore(u){return bodyLevelOf(u)+PARTS.reduce((a,p)=>a+levelFromDays(partDaysOf(u,p.key)),0);} // からだ全体＋全部位レベルの合計
 function muscleScale(lv){return 1+lv*0.085;}        // 0..6 -> 1..1.51
 function bodyScale(){return 1+bodyLevel()*0.03;}     // 全身
 function uniqueTrainDates(){return [...new Set(S.trainings.map(t=>t.date))].sort();}
@@ -916,17 +1023,40 @@ function renderHistory(){
       <td style="color:var(--sub)">${t.memo||"—"}</td><td><span class="del" data-del="${t.id}">削除</span></td></tr>`;}).join("")+
     `</tbody></table>` : `<div class="empty">履歴はまだありません。</div>`;
 }
+function customForPart(pk){return (S.customExercises||[]).filter(e=>e.p===pk);}
 function fillExSelect(sel,pk){
   const list=EXERCISES.filter(e=>e.p===pk && exAvailable(e));
-  sel.innerHTML = list.length? list.map(e=>`<option value="${e.n}">${e.n}</option>`).join("")
-    : `<option value="">このジムには対応器具がありません</option>`;
+  const custom=customForPart(pk);
+  const opts=list.map(e=>`<option value="${e.n}">${e.n}</option>`)
+    .concat(custom.map(e=>`<option value="${e.n}">★ ${e.n}（自分の種目）</option>`));
+  sel.innerHTML = opts.length? opts.join("") : `<option value="">このジムには対応器具がありません</option>`;
 }
 let recPart="chest", mPart="chest";
+function renderCustomExList(){
+  const el=document.getElementById("customExList");if(!el)return;
+  const list=customForPart(recPart);
+  el.innerHTML = list.length
+    ? list.map(e=>`<span class="chip on" style="cursor:default">★ ${e.n} <span data-cxdel="${e.id}" style="margin-left:6px;cursor:pointer">✕</span></span>`).join("")
+    : `<span style="font-size:11px;color:var(--sub)">この部位の自分の種目はまだありません</span>`;
+}
 function renderRecord(){
   document.getElementById("recGymName").textContent=currentGym().name;
   document.getElementById("partChips").innerHTML=PARTS.map(p=>
     `<div class="chip ${p.key===recPart?'on':''}" data-rp="${p.key}">${p.name}</div>`).join("");
   fillExSelect(document.getElementById("exSelect"),recPart);
+  renderCustomExList();
+  // 強化の飴トグル
+  const row=document.getElementById("boostRow");
+  if(row){const has=(S.candy||0)>0;row.style.display=has?"flex":"none";
+    const cc=document.getElementById("candyCount");if(cc)cc.textContent="（保有 "+(S.candy||0)+"個）";
+    if(!has){const uc=document.getElementById("useCandy");if(uc)uc.checked=false;}}
+}
+function addCustomExercise(name,part){
+  part=part||recPart;
+  name=(name||"").trim();if(!name)return false;
+  if(EXERCISES.some(e=>e.p===part&&e.n===name)||customForPart(part).some(e=>e.n===name)){toast("同じ種目がすでにあります");return false;}
+  S.customExercises.push({id:"x"+Date.now(),n:name,p:part});save();
+  return true;
 }
 function renderModalChips(){
   document.getElementById("mPartChips").innerHTML=PARTS.map(p=>
@@ -935,6 +1065,11 @@ function renderModalChips(){
   // menu quick-pick in modal
   const ms=document.getElementById("mMenu");
   if(ms)ms.innerHTML=`<option value="">（単発記録）</option>`+S.menus.map(m=>`<option value="${m.id}">${m.name}（${m.items.length}種目）</option>`).join("");
+  // 強化の飴トグル（モーダル）
+  const row=document.getElementById("mBoostRow");
+  if(row){const has=(S.candy||0)>0;row.style.display=has?"flex":"none";
+    const cc=document.getElementById("mCandyCount");if(cc)cc.textContent="（保有 "+(S.candy||0)+"個）";
+    const uc=document.getElementById("mUseCandy");if(uc&&!has)uc.checked=false;}
 }
 let menuPart="chest", menuDraft=[];
 const partName=k=>PARTS.find(p=>p.key===k)?.name||"";
@@ -943,6 +1078,12 @@ function renderMenu(){
   document.getElementById("menuPartChips").innerHTML=PARTS.map(p=>
     `<div class="chip ${p.key===menuPart?'on':''}" data-menup="${p.key}">${p.name}</div>`).join("");
   fillExSelect(document.getElementById("menuExSelect"),menuPart);
+  // custom exercises for this part
+  const mcl=document.getElementById("menuCustomList");
+  if(mcl){const cl=customForPart(menuPart);
+    mcl.innerHTML = cl.length
+      ? cl.map(e=>`<span class="chip on" style="cursor:default">★ ${e.n} <span data-mcxdel="${e.id}" style="margin-left:6px;cursor:pointer">✕</span></span>`).join("")
+      : `<span style="font-size:11px;color:var(--sub)">${partName(menuPart)}の自分の種目はまだありません</span>`;}
   // draft list
   document.getElementById("menuDraftList").innerHTML = menuDraft.length?
     `<label style="font-size:12px;font-weight:700;color:var(--sub)">追加した種目（${menuDraft.length}）</label>`+
@@ -971,9 +1112,13 @@ function logMenu(id){
   const msg=rand(CHEER);toast(`📝 ${m.name} を${n}種目まとめて記録！`+msg);
   bubble("recBubble",msg);bubble("dashBubble",msg);
 }
+function penaltyToday(){return S.proteinPenalty===todayStr();} // 今日が2倍ペナルティ日か
 function renderProtein(){
-  const bw=S.bw||72, tgt=Math.round(bw*1.6);
-  document.getElementById("proteinTarget").textContent=tgt+" g";
+  const bw=S.bw||72, base=Math.round(bw*1.6);
+  const pen=penaltyToday(); const tgt=pen?base*2:base;
+  document.getElementById("proteinTarget").innerHTML = pen
+    ? `${tgt} g <span style="font-size:12px;color:var(--red);font-weight:800">⚔️敗北ペナルティ2倍</span>`
+    : tgt+" g";
   document.getElementById("bw").value=bw;
   // ring shows monthly progress (this month days done)
   const done=proteinDays();
@@ -1036,9 +1181,135 @@ function renderBadges(){
   document.getElementById("dashBadges").innerHTML = b.length? b.map(x=>`<span class="badge">🏅 ${x}</span>`).join("")
     : `<span style="color:var(--sub);font-size:13px">記録を重ねてバッジを集めよう！</span>`;
 }
+function rivalFeed(){ // 自分以外の活動を新しい順に
+  return ROOT.feed.filter(f=>f.name!==ROOT.current).slice().reverse();
+}
+function renderRivals(){
+  const el=document.getElementById("dashRivals");if(!el)return;
+  const fe=rivalFeed().slice(0,8);
+  el.innerHTML = fe.length
+    ? fe.map(f=>`<div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid #1b1b1f">
+        <div style="width:30px;height:30px;border-radius:50%;background:var(--goldgrad);display:grid;place-items:center;color:#1a1408;font-weight:800;flex-shrink:0">${(f.name[0]||'?').toUpperCase()}</div>
+        <div style="font-size:12.5px"><b>${f.name}</b> さんがジムで頑張ったよ！🔥<div style="font-size:10.5px;color:var(--sub)">${f.date}　負けてられへんで！💪</div></div>
+      </div>`).join("")
+    : `<div style="color:var(--sub);font-size:12.5px">まだライバルの記録はありません。友達を👤から追加して一緒に競おう！</div>`;
+}
+function notifyRivals(){ // ログイン時：前回ログイン以降のライバル活動を通知
+  const since=S.lastSeen||0;
+  const fresh=ROOT.feed.filter(f=>f.name!==ROOT.current && f.ts>since);
+  S.lastSeen=Date.now();save();
+  if(fresh.length){
+    const names=[...new Set(fresh.map(f=>f.name))];
+    const who=names.length<=2?names.join("・"):names[0]+"さんたち";
+    setTimeout(()=>toast(`🔥 ライバルの ${who} が頑張ってるよ！あなたも続け！💪`),700);
+  }
+}
+/* ===== ライバル：応援(エール)・腕相撲バトル・強化の飴 ===== */
+function rivals(){return userList().filter(n=>n!==ROOT.current);}
+function dayDiff(a,b){return Math.round((new Date(a)-new Date(b))/86400000);} // a-b 日数
+function addDays(str,n){const d=new Date(str);d.setDate(d.getDate()+n);return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");}
+function canYell(){return S.lastYellDate!==todayStr();} // 1日1人まで
+function battleCooldown(){return S.lastBattleDate?Math.max(0,3-dayDiff(todayStr(),S.lastBattleDate)):0;} // 残り日数
+function canBattle(){return battleCooldown()<=0;}
+function sendYell(name){
+  if(!canYell()){toast("📣 応援は1日1人までやで（また明日！）");return;}
+  ROOT.events.push({id:"e"+Date.now(),type:"yell",from:ROOT.current,to:name,ts:Date.now(),date:todayStr(),processed:false});
+  S.lastYellDate=todayStr();save();
+  toast(`📣 ${name} にエールを送った！強化の飴をプレゼント🍬`);
+  renderArena();renderRivals();
+}
+function startBattle(name){
+  if(!canBattle()){toast(`💪 腕相撲はあと ${battleCooldown()}日 待ってな（3日に1回）`);return;}
+  const opp=ROOT.users[name];if(!opp){return;}
+  const my=powerScore(S), ov=powerScore(opp);
+  const myWinProb = my>ov?0.70 : my<ov?0.30 : 0.50; // 合計値が高い方の勝率70%
+  const iWin = Math.random()<myWinProb;
+  S.lastBattleDate=todayStr();
+  // 相手向けイベント（相手がログインした時に処理）
+  ROOT.events.push({id:"b"+Date.now(),type:"battle",from:ROOT.current,to:name,ts:Date.now(),date:todayStr(),recipientWon:!iWin,processed:false});
+  if(!iWin){ // 自分が負け → 翌日タンパク質2倍ペナルティ
+    S.proteinPenalty=addDays(todayStr(),1);
+  }
+  save();
+  showBattleResult(name,iWin,my,ov,myWinProb);
+  renderArena();renderRivals();renderProtein();
+}
+function applyBattlePenalty(battleDate){ // 受信側が負けた時：翌日(過ぎていれば今日)を2倍に
+  let pd=addDays(battleDate,1); if(dayDiff(todayStr(),pd)>0)pd=todayStr();
+  S.proteinPenalty=pd;
+}
+function processEvents(){ // ログイン時：自分宛ての応援・バトル結果を処理
+  const me=ROOT.current; const msgs=[]; let changed=false;
+  ROOT.events.forEach(ev=>{
+    if(ev.to!==me||ev.processed)return;
+    ev.processed=true; changed=true;
+    if(ev.type==="yell"){S.candy=(S.candy||0)+1;msgs.push(`📣 ${ev.from} さんがエールを送ってくれた！強化の飴を1個GET🍬`);}
+    else if(ev.type==="battle"){
+      if(ev.recipientWon){msgs.push(`🏆 ${ev.from} との腕相撲に勝った！強い！💪`);}
+      else{applyBattlePenalty(ev.date);msgs.push(`💥 ${ev.from} との腕相撲に負けた…${S.proteinPenalty}はタンパク質2倍やで！`);}
+    }
+  });
+  if(changed)save();
+  msgs.forEach((m,i)=>setTimeout(()=>toast(m),900+i*1600));
+}
+function showBattleResult(name,iWin,my,ov,prob){
+  const box=document.getElementById("battleModalBody");
+  box.innerHTML=`
+    <div style="text-align:center">
+      <div style="font-size:40px">${iWin?"🏆":"💥"}</div>
+      <div style="font-size:22px;font-weight:800;color:${iWin?'var(--gold2)':'var(--red)'};margin:6px 0">${iWin?"勝利！":"敗北…"}</div>
+      <p style="font-size:13px;color:var(--sub)">${ROOT.current}（パワー${my}）vs ${name}（パワー${ov}）<br>勝率 ${Math.round(prob*100)}% の勝負！</p>
+      <div style="margin-top:14px;font-size:14px;font-weight:700">${iWin
+        ? `${name} に勝った！この調子で鍛えていこ💪`
+        : `<span style="color:var(--red)">明日はタンパク質2倍（${Math.round((S.bw||72)*1.6*2)}g）取らないと達成にならへんで！</span>`}</div>
+    </div>`;
+  document.getElementById("battleModal").classList.add("show");
+}
+function renderArena(){
+  const el=document.getElementById("arenaList");if(!el)return;
+  // ヘッダー情報
+  const info=document.getElementById("arenaInfo");
+  if(info)info.innerHTML=`
+    <div style="display:flex;gap:10px;flex-wrap:wrap">
+      <span class="badge" style="background:rgba(212,175,55,.13);color:var(--gold2)">🍬 強化の飴 × ${S.candy||0}</span>
+      <span class="badge" style="background:rgba(212,175,55,.13);color:var(--gold2)">⚡ あなたのパワー ${powerScore(S)}</span>
+      <span class="badge" style="background:${canYell()?'rgba(95,208,138,.13)':'rgba(224,106,95,.13)'};color:${canYell()?'var(--green)':'var(--red)'}">📣 応援 ${canYell()?'本日OK':'本日済み'}</span>
+      <span class="badge" style="background:${canBattle()?'rgba(95,208,138,.13)':'rgba(224,106,95,.13)'};color:${canBattle()?'var(--green)':'var(--red)'}">💪 腕相撲 ${canBattle()?'挑戦可':'あと'+battleCooldown()+'日'}</span>
+    </div>
+    ${S.proteinPenalty&&dayDiff(todayStr(),S.proteinPenalty)<=0?`<div style="margin-top:10px;font-size:12px;color:var(--red);font-weight:700">⚔️ 敗北ペナルティ：${S.proteinPenalty} はタンパク質2倍が必要です</div>`:""}`;
+  const rs=rivals();
+  el.innerHTML = rs.length
+    ? rs.map(n=>{const u=ROOT.users[n];const pw=powerScore(u);
+      return `<div style="display:flex;align-items:center;gap:12px;padding:13px;border:1px solid var(--line);border-radius:12px;background:#0e0e11;margin-bottom:10px">
+        <div style="width:40px;height:40px;border-radius:50%;background:var(--goldgrad);display:grid;place-items:center;color:#1a1408;font-weight:800;flex-shrink:0">${(n[0]||'?').toUpperCase()}</div>
+        <div style="flex:1;min-width:0">
+          <b style="font-size:14px">${n}</b> <span style="font-size:11px;color:var(--sub)">${u.gender==='female'?'♀':'♂'}</span>
+          <div style="font-size:11px;color:var(--sub)">⚡パワー ${pw} ・ ${new Set(u.trainings.map(t=>t.date)).size}回トレ</div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:6px">
+          <button class="btn ${canYell()?'btn-gold':'btn-ghost'}" data-yell="${n}" style="padding:7px 12px;font-size:12px;white-space:nowrap">📣 応援</button>
+          <button class="btn ${canBattle()?'btn-gold':'btn-ghost'}" data-battle="${n}" style="padding:7px 12px;font-size:12px;white-space:nowrap">💪 腕相撲</button>
+        </div>
+      </div>`;}).join("")
+    : `<div class="empty">ライバルがいません。右上の👤から友達を追加して、応援やバトルで競い合おう！</div>`;
+}
+let fbType="要望";
+function renderFeedback(){
+  const el=document.getElementById("fbList");if(!el)return;
+  const list=ROOT.feedback.slice().reverse();
+  el.innerHTML = list.length
+    ? list.map(f=>`<div style="padding:10px 0;border-bottom:1px solid #1b1b1f">
+        <div style="font-size:11px;color:var(--sub)"><span class="tag">${f.type}</span> ${f.user}・${f.date}</div>
+        <div style="font-size:13px;margin-top:4px">${f.text.replace(/</g,"&lt;")}</div></div>`).join("")
+    : `<div class="empty">まだ送信された要望はありません。</div>`;
+}
+function feedbackAsText(){
+  return "【IRON LOG 改善フォーム 報告】\n"+ROOT.feedback.map((f,i)=>
+    `${i+1}. [${f.type}] ${f.user}（${f.date}）\n   ${f.text}`).join("\n");
+}
 
 function renderAll(){
-  renderStats();renderParts();renderRecent();renderHistory();renderRecord();renderProtein();renderGym();renderBadges();renderMenu();
+  renderStats();renderParts();renderRecent();renderHistory();renderRecord();renderProtein();renderGym();renderBadges();renderMenu();renderRivals();renderFeedback();renderArena();
   refreshAllChars();
   // page bubbles
   bubble("charPageBubble","ええ筋肉になってきたで！💪");
@@ -1046,15 +1317,32 @@ function renderAll(){
 }
 
 /* =================== ACTIONS =================== */
-function addTraining(p,ex,w,r,s,memo){
+function recordActivity(){ // ライバル通知用：1日1回「ジムに来た」イベントを共有フィードに記録
+  if(!ROOT.current)return;
+  const t=todayStr();
+  if(ROOT.feed.some(f=>f.name===ROOT.current && f.date===t))return; // 今日はもう記録済み
+  ROOT.feed.push({name:ROOT.current,gender:S.gender,date:t,ts:Date.now()});
+  if(ROOT.feed.length>200)ROOT.feed=ROOT.feed.slice(-200);
+}
+function addTraining(p,ex,w,r,s,memo,boost){
   if(!ex){toast("この部位はこのジムで実施可能な種目がありません");return false;}
   S.trainings.push({id:Date.now()+""+Math.random().toString(36).slice(2,5),date:todayStr(),p,ex,w:+w,r:+r,s:+s,memo:memo||""});
+  if(boost && (S.candy||0)>0){ // 強化の飴：このトレーニングのレベルを2倍（+1日分ボーナス）
+    S.candy--; S.bonus[p]=(S.bonus[p]||0)+1;
+    setTimeout(()=>toast("🍬 強化の飴使用！この部位のレベルが2倍効果でアップ⚡"),300);
+  }
+  recordActivity();
   save();return true;
 }
 function toggleProtein(k){
   const i=S.protein.indexOf(k);
+  if(i<0 && k===S.proteinPenalty){ // 敗北ペナルティ日は2倍飲んだ確認が必要
+    const need=Math.round((S.bw||72)*1.6*2);
+    if(!confirm(`⚔️ 腕相撲の敗北ペナルティ日です。\n今日は目標の2倍（${need}g）のタンパク質を取りましたか？\n\nOKで達成として記録します。`)){
+      toast("⚔️ 2倍飲んだら達成できるで！がんばれ💪");return;}
+  }
   if(i>=0)S.protein.splice(i,1); else S.protein.push(k);
-  save();renderProtein();renderParts();renderBadges();refreshAllChars();
+  save();renderProtein();renderParts();renderBadges();renderArena();refreshAllChars();
   if(i<0){toast("🥩 タンパク質 達成！からだが育つで！");bubble("proteinBubble","ナイス補給！からだが大きくなるで！");}
 }
 
@@ -1084,11 +1372,22 @@ document.querySelectorAll("[data-jump]").forEach(el=>el.onclick=()=>showView(el.
 // record part chips
 document.getElementById("partChips").addEventListener("click",e=>{
   const c=e.target.closest("[data-rp]");if(!c)return;recPart=c.dataset.rp;renderRecord();});
+// custom exercise add / delete (record view)
+document.getElementById("customExAdd").onclick=()=>{
+  const inp=document.getElementById("customExName");
+  if(addCustomExercise(inp.value,recPart)){inp.value="";renderRecord();
+    const sel=document.getElementById("exSelect");if(sel)sel.value=inp.value;toast("⭐ オリジナル種目を追加しました");}
+};
+document.getElementById("customExName").addEventListener("keydown",e=>{if(e.key==="Enter")document.getElementById("customExAdd").click();});
+document.getElementById("customExList").addEventListener("click",e=>{
+  const d=e.target.closest("[data-cxdel]");if(!d)return;
+  S.customExercises=S.customExercises.filter(x=>x.id!==d.dataset.cxdel);save();renderRecord();toast("種目を削除しました");});
 document.getElementById("saveRec").onclick=()=>{
   const ex=document.getElementById("exSelect").value;
+  const boost=document.getElementById("useCandy").checked;
   if(addTraining(recPart,ex,document.getElementById("inW").value,document.getElementById("inR").value,
-     document.getElementById("inS").value,document.getElementById("inMemo").value)){
-    document.getElementById("inMemo").value="";
+     document.getElementById("inS").value,document.getElementById("inMemo").value,boost)){
+    document.getElementById("inMemo").value="";document.getElementById("useCandy").checked=false;
     const msg=rand(CHEER);bubble("recBubble",msg);toast("💪 記録完了！"+msg);
     renderAll();
   }
@@ -1126,6 +1425,17 @@ document.getElementById("saveCustomGym").onclick=()=>{
 // set menu
 document.getElementById("menuPartChips").addEventListener("click",e=>{
   const c=e.target.closest("[data-menup]");if(!c)return;menuPart=c.dataset.menup;renderMenu();});
+// add a brand-new exercise to THIS part, then auto-select it in the dropdown
+document.getElementById("menuCustomAdd").onclick=()=>{
+  const inp=document.getElementById("menuCustomName");const name=inp.value.trim();
+  if(addCustomExercise(name,menuPart)){inp.value="";renderMenu();
+    const sel=document.getElementById("menuExSelect");if(sel)sel.value=name;
+    toast("⭐ "+partName(menuPart)+"に種目を追加しました");}
+};
+document.getElementById("menuCustomName").addEventListener("keydown",e=>{if(e.key==="Enter")document.getElementById("menuCustomAdd").click();});
+document.getElementById("menuCustomList").addEventListener("click",e=>{
+  const d=e.target.closest("[data-mcxdel]");if(!d)return;
+  S.customExercises=S.customExercises.filter(x=>x.id!==d.dataset.mcxdel);save();renderMenu();renderRecord();toast("種目を削除しました");});
 document.getElementById("menuAddItem").onclick=()=>{
   const ex=document.getElementById("menuExSelect").value;
   if(!ex){toast("このジムで実施可能な種目がありません");return;}
@@ -1153,6 +1463,34 @@ document.getElementById("quickLog").onclick=()=>{
   logMenu(id);
 };
 
+// feedback form
+document.getElementById("fbTypeChips").addEventListener("click",e=>{
+  const c=e.target.closest("[data-fbtype]");if(!c)return;fbType=c.dataset.fbtype;
+  document.querySelectorAll("#fbTypeChips .chip").forEach(x=>x.classList.toggle("on",x.dataset.fbtype===fbType));});
+document.getElementById("fbSend").onclick=()=>{
+  const txt=document.getElementById("fbText").value.trim();
+  if(!txt){toast("内容を入力してください");return;}
+  ROOT.feedback.push({user:ROOT.current||"ゲスト",type:fbType,text:txt,date:todayStr(),ts:Date.now()});
+  save();document.getElementById("fbText").value="";renderFeedback();
+  toast("📨 ありがとう！要望を受け付けました💛");
+};
+document.getElementById("fbCopy").onclick=async()=>{
+  if(!ROOT.feedback.length){toast("まだ要望がありません");return;}
+  const txt=feedbackAsText();
+  try{await navigator.clipboard.writeText(txt);toast("📋 コピーしました！Claudeに貼り付けて報告してください");}
+  catch(e){const ta=document.createElement("textarea");ta.value=txt;document.body.appendChild(ta);ta.select();document.execCommand("copy");ta.remove();toast("📋 コピーしました！Claudeに貼り付けてください");}
+};
+
+// arena (rivals): 応援 / 腕相撲
+document.getElementById("arenaList").addEventListener("click",e=>{
+  const y=e.target.closest("[data-yell]");const b=e.target.closest("[data-battle]");
+  if(y)sendYell(y.dataset.yell);
+  if(b)startBattle(b.dataset.battle);
+});
+const battleModal=document.getElementById("battleModal");
+battleModal.addEventListener("click",e=>{if(e.target===battleModal||e.target.dataset.bclose!==undefined)battleModal.classList.remove("show");});
+document.getElementById("battleOk").onclick=()=>battleModal.classList.remove("show");
+
 // visit modal
 const vm=document.getElementById("visitModal");
 document.getElementById("visitBtn").onclick=()=>{
@@ -1172,7 +1510,8 @@ document.getElementById("mMenuLog").onclick=()=>{
 };
 document.getElementById("mSave").onclick=()=>{
   const ex=document.getElementById("mEx").value;
-  if(addTraining(mPart,ex,document.getElementById("mW").value,document.getElementById("mR").value,document.getElementById("mS").value,"")){
+  const boost=document.getElementById("mUseCandy").checked;
+  if(addTraining(mPart,ex,document.getElementById("mW").value,document.getElementById("mR").value,document.getElementById("mS").value,"",boost)){
     const before=document.getElementById("welcomeMsg");
     const msg=rand(CHEER);before.textContent=msg;
     toast("💪 "+msg);
@@ -1220,6 +1559,8 @@ function bootUser(){
   updateProfileUI();
   renderAll();
   bubble("dashBubble", S.gender==="female"?"今日も一緒にがんばろ！💛":"今日も鍛えていこか！💪");
+  processEvents();
+  notifyRivals();
 }
 function loginUser(name){ROOT.current=name;S=ROOT.users[name];save();bootUser();}
 document.getElementById("genderPick").addEventListener("click",e=>{
