@@ -1,0 +1,1605 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>IRON LOG — 筋トレトラッカー</title>
+<style>
+:root{
+  --bg:#08080a; --bg2:#0e0e11; --panel:#141417; --panel2:#1a1a1e;
+  --line:#26262c; --txt:#ece9e0; --sub:#8d8a82;
+  --gold:#d4af37; --gold2:#f0d77a; --gold-dim:#9c7f2a;
+  --green:#5fd08a; --red:#e06a5f;
+  --goldgrad:linear-gradient(135deg,#f0d77a 0%,#d4af37 45%,#a9852a 100%);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{
+  font-family:"Hiragino Kaku Gothic ProN","Yu Gothic",system-ui,-apple-system,sans-serif;
+  background:radial-gradient(1200px 700px at 80% -10%,#15130c 0%,var(--bg) 55%);
+  color:var(--txt); display:flex; min-height:100vh; -webkit-font-smoothing:antialiased;
+}
+::-webkit-scrollbar{width:9px;height:9px}
+::-webkit-scrollbar-thumb{background:#2a2a30;border-radius:6px}
+::-webkit-scrollbar-track{background:transparent}
+
+/* ===== Sidebar ===== */
+.sidebar{
+  width:230px; flex-shrink:0; background:linear-gradient(180deg,#0c0c0f,#0a0a0c);
+  border-right:1px solid var(--line); padding:22px 16px; display:flex; flex-direction:column; gap:6px;
+  position:sticky; top:0; height:100vh;
+}
+.brand{display:flex;align-items:center;gap:12px;padding:4px 8px 22px}
+.brand .logo{width:38px;height:38px;border-radius:10px;background:var(--goldgrad);
+  display:grid;place-items:center;color:#1a1408;font-weight:900;font-size:20px;
+  box-shadow:0 4px 14px rgba(212,175,55,.35)}
+.brand b{font-size:18px;letter-spacing:3px;font-weight:800;background:var(--goldgrad);
+  -webkit-background-clip:text;background-clip:text;color:transparent}
+.nav{display:flex;flex-direction:column;gap:3px;flex:1}
+.nav a{display:flex;align-items:center;gap:12px;padding:11px 13px;border-radius:10px;
+  color:var(--sub);text-decoration:none;font-size:14px;font-weight:600;cursor:pointer;
+  transition:.18s;border:1px solid transparent}
+.nav a .ic{font-size:17px;width:22px;text-align:center}
+.nav a:hover{background:#16161a;color:var(--txt)}
+.nav a.active{background:linear-gradient(90deg,rgba(212,175,55,.16),rgba(212,175,55,.03));
+  color:var(--gold2);border-color:rgba(212,175,55,.3)}
+.userbox{display:flex;align-items:center;gap:11px;padding:12px;border:1px solid var(--line);
+  border-radius:12px;background:#0e0e11;margin-top:8px}
+.userbox .av{width:40px;height:40px;border-radius:50%;background:var(--goldgrad);
+  display:grid;place-items:center;color:#1a1408;font-weight:800}
+.userbox small{display:block;color:var(--gold-dim);font-size:11px;font-weight:700}
+
+/* ===== Main ===== */
+.main{flex:1;padding:26px 34px 60px;max-width:1500px;width:100%}
+.topbar{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap;margin-bottom:24px}
+.hello h1{font-size:26px;font-weight:800;letter-spacing:.5px}
+.hello h1 span{background:var(--goldgrad);-webkit-background-clip:text;background-clip:text;color:transparent}
+.hello p{color:var(--sub);margin-top:6px;font-size:14px}
+.topctrl{display:flex;align-items:center;gap:12px}
+.datepill{display:flex;align-items:center;gap:14px;background:var(--panel);border:1px solid var(--line);
+  padding:9px 16px;border-radius:11px;font-size:13px;font-weight:600}
+.datepill button{background:none;border:none;color:var(--sub);cursor:pointer;font-size:15px}
+.btn{border:none;border-radius:11px;padding:12px 20px;font-weight:800;font-size:14px;cursor:pointer;
+  display:inline-flex;align-items:center;gap:9px;transition:.18s}
+.btn-gold{background:var(--goldgrad);color:#1a1408;box-shadow:0 6px 18px rgba(212,175,55,.32)}
+.btn-gold:hover{filter:brightness(1.08);transform:translateY(-1px)}
+.btn-ghost{background:var(--panel);color:var(--txt);border:1px solid var(--line)}
+.btn-ghost:hover{border-color:var(--gold-dim);color:var(--gold2)}
+
+/* stat cards */
+.stats{display:grid;grid-template-columns:repeat(5,1fr);gap:14px;margin-bottom:24px}
+.stat{background:linear-gradient(160deg,#161619,#0f0f12);border:1px solid var(--line);
+  border-radius:15px;padding:18px}
+.stat .ic{width:34px;height:34px;border-radius:9px;background:rgba(212,175,55,.12);
+  color:var(--gold2);display:grid;place-items:center;font-size:17px;margin-bottom:12px}
+.stat label{color:var(--sub);font-size:12px;font-weight:600}
+.stat .v{font-size:23px;font-weight:800;margin:5px 0 7px;letter-spacing:.5px}
+.stat .d{font-size:11px;color:var(--gold-dim);font-weight:700}
+
+.grid{display:grid;grid-template-columns:1.55fr 1fr;gap:18px;align-items:start}
+.panel{background:linear-gradient(165deg,#141417,#0e0e11);border:1px solid var(--line);
+  border-radius:16px;padding:20px;margin-bottom:18px}
+.panel h2{font-size:15px;font-weight:800;margin-bottom:16px;display:flex;align-items:center;gap:9px}
+.panel h2::before{content:"";width:4px;height:16px;border-radius:3px;background:var(--goldgrad)}
+.panel h2 .right{margin-left:auto;font-size:12px;color:var(--gold-dim);font-weight:700;cursor:pointer}
+
+/* ===== Character ===== */
+.charwrap{display:flex;gap:18px;align-items:stretch}
+.charstage{flex:0 0 270px;background:radial-gradient(circle at 50% 30%,#1c1810,#0b0b0d 70%);
+  border:1px solid var(--line);border-radius:16px;position:relative;overflow:hidden;
+  display:grid;place-items:center;padding:10px;min-height:430px}
+.charstage .floor{position:absolute;bottom:24px;left:50%;transform:translateX(-50%);
+  width:170px;height:24px;border-radius:50%;background:radial-gradient(circle,rgba(212,175,55,.25),transparent 70%)}
+.bubble{position:absolute;top:14px;left:50%;transform:translateX(-50%);
+  background:var(--goldgrad);color:#1a1408;font-weight:800;font-size:13px;padding:9px 15px;
+  border-radius:14px;white-space:nowrap;box-shadow:0 6px 16px rgba(0,0,0,.4);opacity:0;
+  transition:.3s;max-width:240px;text-align:center}
+.bubble.show{opacity:1}
+.bubble::after{content:"";position:absolute;bottom:-7px;left:50%;transform:translateX(-50%);
+  border:7px solid transparent;border-top-color:#d4af37;border-bottom:0}
+.partlist{flex:1;display:flex;flex-direction:column;gap:9px}
+.partrow{background:#101013;border:1px solid var(--line);border-radius:11px;padding:11px 13px}
+.partrow .top{display:flex;justify-content:space-between;align-items:center;margin-bottom:7px}
+.partrow .name{font-weight:700;font-size:13px}
+.partrow .lv{font-size:11px;font-weight:800;color:var(--gold2);background:rgba(212,175,55,.13);
+  padding:2px 9px;border-radius:20px}
+.bar{height:7px;background:#1f1f24;border-radius:6px;overflow:hidden}
+.bar > i{display:block;height:100%;background:var(--goldgrad);border-radius:6px;transition:width .6s}
+.partrow .meta{font-size:10.5px;color:var(--sub);margin-top:5px}
+
+/* tabs / views */
+.view{display:none}
+.view.active{display:block}
+
+/* record */
+.field{margin-bottom:14px}
+.field label{display:block;font-size:12px;font-weight:700;color:var(--sub);margin-bottom:6px}
+.field select,.field input{width:100%;background:#0e0e11;border:1px solid var(--line);
+  color:var(--txt);padding:11px 13px;border-radius:10px;font-size:14px;font-family:inherit}
+.field select:focus,.field input:focus{outline:none;border-color:var(--gold-dim)}
+.row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{padding:8px 14px;border-radius:20px;border:1px solid var(--line);background:#0e0e11;
+  color:var(--sub);font-size:13px;font-weight:700;cursor:pointer;transition:.15s}
+.chip:hover{border-color:var(--gold-dim)}
+.chip.on{background:var(--goldgrad);color:#1a1408;border-color:transparent}
+
+/* table */
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{text-align:left;color:var(--sub);font-weight:700;font-size:11px;padding:9px 10px;border-bottom:1px solid var(--line)}
+td{padding:11px 10px;border-bottom:1px solid #1b1b1f}
+tr:hover td{background:#101013}
+.tag{font-size:11px;font-weight:800;padding:3px 9px;border-radius:6px;background:rgba(212,175,55,.13);color:var(--gold2)}
+.del{color:var(--red);cursor:pointer;font-size:12px;font-weight:700;opacity:.7}
+.del:hover{opacity:1}
+
+/* protein */
+.protein-head{display:flex;gap:18px;align-items:center;flex-wrap:wrap;margin-bottom:18px}
+.ring{position:relative;width:120px;height:120px;flex-shrink:0}
+.ring svg{transform:rotate(-90deg)}
+.ring .lab{position:absolute;inset:0;display:grid;place-items:center;text-align:center}
+.ring .lab b{font-size:22px;font-weight:800}
+.ring .lab small{font-size:10px;color:var(--sub);display:block}
+.pcal{display:grid;grid-template-columns:repeat(auto-fill,minmax(34px,1fr));gap:6px;margin-top:6px}
+.pday{aspect-ratio:1;border-radius:8px;background:#101013;border:1px solid var(--line);
+  display:grid;place-items:center;font-size:11px;color:var(--sub);cursor:pointer;transition:.15s;font-weight:700}
+.pday:hover{border-color:var(--gold-dim)}
+.pday.done{background:var(--goldgrad);color:#1a1408;border-color:transparent}
+.pday.today{box-shadow:0 0 0 2px var(--gold2)}
+
+/* gym */
+.gymcard{border:1px solid var(--line);border-radius:13px;padding:15px;cursor:pointer;transition:.15s;background:#0e0e11}
+.gymcard:hover{border-color:var(--gold-dim)}
+.gymcard.on{border-color:var(--gold);background:linear-gradient(160deg,rgba(212,175,55,.1),transparent)}
+.gymcard h4{font-size:14px;font-weight:800;margin-bottom:5px}
+.gymcard p{font-size:11.5px;color:var(--sub);line-height:1.5}
+.gymgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px}
+.equipgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px;margin-top:6px}
+.eqchk{display:flex;align-items:center;gap:8px;background:#0e0e11;border:1px solid var(--line);
+  padding:9px 11px;border-radius:9px;font-size:12.5px;cursor:pointer;font-weight:600}
+.eqchk input{accent-color:var(--gold)}
+.eqchk.on{border-color:var(--gold-dim);color:var(--gold2)}
+
+/* modal */
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.72);backdrop-filter:blur(4px);
+  display:none;place-items:center;z-index:50;padding:20px}
+.overlay.show{display:grid}
+.modal{background:linear-gradient(165deg,#161619,#0e0e11);border:1px solid var(--line);
+  border-radius:18px;padding:26px;width:100%;max-width:560px;max-height:90vh;overflow:auto;
+  box-shadow:0 30px 80px rgba(0,0,0,.6)}
+.modal h3{font-size:19px;font-weight:800;margin-bottom:4px}
+.modal .x{float:right;cursor:pointer;color:var(--sub);font-size:22px;line-height:1}
+.welcome{display:flex;gap:16px;align-items:center;background:radial-gradient(circle at 30% 30%,#1c1810,#0d0d10);
+  border:1px solid var(--gold-dim);border-radius:14px;padding:16px;margin-bottom:18px}
+.welcome .mini{width:84px;flex-shrink:0}
+.welcome .msg{font-weight:800;font-size:15px;color:var(--gold2);line-height:1.5}
+
+/* ===== login / profile ===== */
+.login{position:fixed;inset:0;background:radial-gradient(900px 600px at 50% -10%,#1a160c,#08080a 60%);
+  display:none;place-items:center;z-index:80;padding:20px;overflow:auto}
+.login.show{display:grid}
+.login .box{width:100%;max-width:460px;text-align:center}
+.login .logo-lg{width:64px;height:64px;border-radius:16px;background:var(--goldgrad);display:grid;place-items:center;
+  color:#1a1408;font-weight:900;font-size:32px;margin:0 auto 16px;box-shadow:0 8px 24px rgba(212,175,55,.35)}
+.login h2{font-size:24px;font-weight:800;letter-spacing:2px;background:var(--goldgrad);
+  -webkit-background-clip:text;background-clip:text;color:transparent;margin-bottom:6px}
+.login p.sub{color:var(--sub);font-size:13px;margin-bottom:22px}
+.profile-cards{display:flex;flex-direction:column;gap:10px;margin-bottom:18px}
+.pcard{display:flex;align-items:center;gap:14px;background:var(--panel);border:1px solid var(--line);
+  border-radius:13px;padding:14px 16px;cursor:pointer;transition:.15s;text-align:left}
+.pcard:hover{border-color:var(--gold);background:linear-gradient(160deg,rgba(212,175,55,.1),transparent)}
+.pcard .pav{width:44px;height:44px;border-radius:50%;background:var(--goldgrad);display:grid;place-items:center;
+  color:#1a1408;font-weight:800;font-size:18px;flex-shrink:0}
+.pcard b{font-size:16px}.pcard small{color:var(--sub);font-size:12px;display:block}
+.pcard .pdel{margin-left:auto;color:var(--red);opacity:.6;font-size:12px;font-weight:700;padding:6px}
+.pcard .pdel:hover{opacity:1}
+.login .formcard{background:var(--panel);border:1px solid var(--line);border-radius:15px;padding:20px;text-align:left}
+.login .formcard h3{font-size:15px;font-weight:800;margin-bottom:14px}
+.genderpick{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px}
+.gbtn{border:1px solid var(--line);background:#0e0e11;border-radius:12px;padding:14px 8px;cursor:pointer;
+  display:flex;flex-direction:column;align-items:center;gap:8px;transition:.15s;color:var(--sub);font-weight:800;font-size:13px}
+.gbtn .gprev{width:70px;height:84px;display:grid;place-items:center;overflow:hidden}
+.gbtn.on{border-color:var(--gold);background:linear-gradient(160deg,rgba(212,175,55,.12),transparent);color:var(--gold2)}
+.login .divider{display:flex;align-items:center;gap:12px;color:var(--sub);font-size:12px;margin:18px 0}
+.login .divider::before,.login .divider::after{content:"";flex:1;height:1px;background:var(--line)}
+
+.toast{position:fixed;bottom:26px;left:50%;transform:translateX(-50%) translateY(20px);
+  background:var(--goldgrad);color:#1a1408;font-weight:800;padding:13px 24px;border-radius:12px;
+  box-shadow:0 12px 30px rgba(0,0,0,.4);opacity:0;transition:.35s;z-index:60;pointer-events:none;font-size:14px}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+.muscle{transition:transform .7s cubic-bezier(.2,.9,.3,1.2)}
+.badge{display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:800;
+  background:rgba(95,208,138,.13);color:var(--green);padding:3px 10px;border-radius:20px}
+.empty{text-align:center;color:var(--sub);padding:30px;font-size:13px}
+.lvlist{display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:8px;margin-top:8px}
+.lvchip{background:#0e0e11;border:1px solid var(--line);border-radius:9px;padding:9px;text-align:center;font-size:11px}
+.lvchip b{display:block;font-size:15px;color:var(--gold2)}
+.lvchip.hit{border-color:var(--gold);background:rgba(212,175,55,.08)}
+@media(max-width:1100px){body.mode-pc .stats{grid-template-columns:repeat(2,1fr)}body.mode-pc .grid{grid-template-columns:1fr}}
+@media(max-width:720px){.sidebar{display:none}.main{padding:18px}.charwrap{flex-direction:column}}
+
+/* ===== layout mode toggle ===== */
+.modeswitch{display:inline-flex;background:var(--panel);border:1px solid var(--line);border-radius:11px;padding:3px;gap:2px}
+.modeswitch button{border:none;background:none;color:var(--sub);font-weight:800;font-size:13px;
+  padding:8px 14px;border-radius:9px;cursor:pointer;display:flex;align-items:center;gap:6px;transition:.15s}
+.modeswitch button.on{background:var(--goldgrad);color:#1a1408}
+
+/* bottom tab bar (mobile only) */
+.bottomnav{display:none}
+.bottomnav .bn-inner{display:flex;justify-content:space-between;gap:2px;
+  background:rgba(12,12,15,.96);backdrop-filter:blur(10px);border-top:1px solid var(--line);
+  padding:7px 6px calc(7px + env(safe-area-inset-bottom,0px));}
+.bottomnav a{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;
+  color:var(--sub);text-decoration:none;font-size:9.5px;font-weight:700;cursor:pointer;padding:4px 0;border-radius:9px;transition:.15s}
+.bottomnav a .ic{font-size:18px;line-height:1}
+.bottomnav a.active{color:var(--gold2)}
+.bottomnav a.active .ic{filter:drop-shadow(0 0 6px rgba(212,175,55,.5))}
+
+/* ===== MOBILE MODE (portrait phone frame) ===== */
+body.mode-mobile{display:block}
+body.mode-mobile .sidebar{display:none}
+body.mode-mobile .main{max-width:460px;margin:0 auto;padding:16px 14px 88px}
+body.mode-mobile .stats{grid-template-columns:repeat(2,1fr);gap:10px}
+body.mode-mobile .grid{grid-template-columns:1fr}
+body.mode-mobile .charwrap{flex-direction:column}
+body.mode-mobile .charstage{flex:1 1 auto;min-height:360px}
+body.mode-mobile .topbar{flex-direction:column;align-items:stretch;gap:14px}
+body.mode-mobile .hello h1{font-size:21px}
+body.mode-mobile .topctrl{flex-wrap:wrap;gap:10px}
+body.mode-mobile .topctrl .datepill{flex:1;justify-content:center;white-space:nowrap;font-size:12px;padding:9px 10px}
+body.mode-mobile .topctrl #visitBtn{flex:1;justify-content:center;white-space:nowrap}
+body.mode-mobile .bottomnav{display:block;position:fixed;left:50%;transform:translateX(-50%);
+  bottom:0;width:100%;max-width:460px;z-index:40}
+body.mode-mobile .panel{padding:16px}
+body.mode-mobile .gymgrid{grid-template-columns:1fr}
+body.mode-mobile .modeswitch{order:-1;align-self:center}
+</style>
+</head>
+<body>
+
+<!-- ===== Sidebar ===== -->
+<aside class="sidebar">
+  <div class="brand"><div class="logo">◆</div><b>IRON LOG</b></div>
+  <nav class="nav" id="nav">
+    <a data-view="dash" class="active"><span class="ic">🏠</span>ダッシュボード</a>
+    <a data-view="record"><span class="ic">🏋️</span>トレーニング記録</a>
+    <a data-view="menu"><span class="ic">📝</span>セットメニュー</a>
+    <a data-view="character"><span class="ic">💪</span>きんに君 育成</a>
+    <a data-view="protein"><span class="ic">🥩</span>タンパク質</a>
+    <a data-view="gym"><span class="ic">📍</span>ジム設定</a>
+    <a data-view="arena"><span class="ic">⚔️</span>ライバル対戦</a>
+    <a data-view="history"><span class="ic">📋</span>履歴</a>
+    <a data-view="feedback"><span class="ic">💡</span>改善フォーム</a>
+  </nav>
+  <div class="userbox" id="userBox" style="cursor:pointer">
+    <div class="av" id="userAv">D</div>
+    <div><b id="userName" style="font-size:13px">Daichi</b><small>切り替え →</small></div>
+  </div>
+</aside>
+
+<!-- ===== Main ===== -->
+<main class="main">
+  <div class="topbar">
+    <div class="hello">
+      <h1>おかえりなさい、<span id="greetName">Daichi</span> さん</h1>
+      <p id="subGreet">今日も最高のトレーニングを。筋肉は裏切らへんで！</p>
+    </div>
+    <div class="topctrl">
+      <div class="modeswitch" id="modeSwitch">
+        <button data-mode="mobile">📱 スマホ</button>
+        <button data-mode="pc">🖥 PC</button>
+      </div>
+      <button class="btn btn-ghost" id="profileBtn">👤 <span id="profileBtnName">ユーザー</span></button>
+      <div class="datepill"><span id="todayLabel"></span></div>
+      <button class="btn btn-gold" id="visitBtn">🔥 ジムに来店</button>
+    </div>
+  </div>
+
+  <!-- ========== DASHBOARD ========== -->
+  <section class="view active" id="view-dash">
+    <div class="stats" id="statRow"></div>
+    <div class="grid">
+      <div>
+        <div class="panel">
+          <h2>きんに君のからだ <span class="right" data-jump="character">育成を見る →</span></h2>
+          <div class="charwrap">
+            <div class="charstage">
+              <div class="bubble" id="dashBubble"></div>
+              <div id="charMount"></div>
+              <div class="floor"></div>
+            </div>
+            <div class="partlist" id="dashParts"></div>
+          </div>
+        </div>
+        <div class="panel">
+          <h2>最近のトレーニング <span class="right" data-jump="history">履歴を見る →</span></h2>
+          <div id="recentList"></div>
+        </div>
+      </div>
+      <div>
+        <div class="panel">
+          <h2>タンパク質 <span class="right" data-jump="protein">記録する →</span></h2>
+          <div id="dashProtein"></div>
+        </div>
+        <div class="panel">
+          <h2>今のジム <span class="right" data-jump="gym">変更 →</span></h2>
+          <div id="dashGym"></div>
+        </div>
+        <div class="panel">
+          <h2>🔥 ライバルの活動 <span class="right" data-jump="arena">応援・対戦 →</span></h2>
+          <div id="dashRivals"></div>
+        </div>
+        <div class="panel">
+          <h2>達成バッジ</h2>
+          <div id="dashBadges" class="chips"></div>
+        </div>
+        <div class="panel">
+          <h2>💡 アプリ改善フォーム <span class="right" data-jump="feedback">送る →</span></h2>
+          <p style="font-size:12px;color:var(--sub)">使ってみて「こうしたい」があれば教えてください。開発に届きます。</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========== RECORD ========== -->
+  <section class="view" id="view-record">
+    <div class="grid">
+      <div class="panel">
+        <h2>トレーニングを記録</h2>
+        <p style="font-size:12px;color:var(--sub);margin:-8px 0 16px">
+          現在のジム：<b id="recGymName" style="color:var(--gold2)"></b>　器具に合った種目だけ表示されます。
+        </p>
+        <div class="field">
+          <label>鍛える部位</label>
+          <div class="chips" id="partChips"></div>
+        </div>
+        <div class="field">
+          <label>種目（このジムの器具＋自分で作った種目）</label>
+          <select id="exSelect"></select>
+        </div>
+        <div class="field" style="background:#101013;border:1px solid var(--line);border-radius:11px;padding:12px">
+          <label>✏️ 自分だけのオリジナル種目を作る（選択中の部位に追加）</label>
+          <div style="display:flex;gap:8px">
+            <input type="text" id="customExName" placeholder="例：アーノルドプレス" style="flex:1">
+            <button class="btn btn-gold" id="customExAdd" style="white-space:nowrap;padding:10px 14px">＋ 追加</button>
+          </div>
+          <div class="chips" id="customExList" style="margin-top:10px"></div>
+        </div>
+        <div class="row3">
+          <div class="field"><label>重量 (kg)</label><input type="number" id="inW" value="40" min="0" step="0.5"></div>
+          <div class="field"><label>回数 (reps)</label><input type="number" id="inR" value="10" min="1"></div>
+          <div class="field"><label>セット</label><input type="number" id="inS" value="3" min="1"></div>
+        </div>
+        <div class="field"><label>メモ</label><input type="text" id="inMemo" placeholder="調子良し / PR更新 など"></div>
+        <label class="eqchk" id="boostRow" style="display:none;margin-bottom:12px;border-color:var(--gold-dim);color:var(--gold2)">
+          <input type="checkbox" id="useCandy"> 🍬 強化の飴を使う（このトレーニングのレベルを2倍）　<span id="candyCount" style="color:var(--sub)"></span>
+        </label>
+        <button class="btn btn-gold" id="saveRec" style="width:100%">💪 この種目を記録する</button>
+
+        <div style="border-top:1px solid var(--line);margin:20px 0 14px"></div>
+        <h2 style="font-size:14px">⚡ セットメニューでまとめて記録</h2>
+        <p style="font-size:12px;color:var(--sub);margin:-8px 0 12px">
+          登録したメニューを選んで、種目を1タップで全部まとめて記録できます。
+        </p>
+        <div class="field"><select id="quickMenu"></select></div>
+        <button class="btn btn-ghost" id="quickLog" style="width:100%">📝 このメニューをまとめて記録する</button>
+        <p style="font-size:11px;color:var(--sub);margin-top:10px;text-align:center">
+          メニューの作成・編集は左メニューの「セットメニュー」から。
+        </p>
+      </div>
+      <div class="panel">
+        <h2>きんに君の応援</h2>
+        <div class="charstage" style="min-height:340px">
+          <div class="bubble" id="recBubble"></div>
+          <div id="charMount2"></div>
+          <div class="floor"></div>
+        </div>
+        <p style="font-size:12px;color:var(--sub);margin-top:14px;text-align:center">
+          記録するたびに、きんに君が応援してくれるで！💛
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========== SET MENU ========== -->
+  <section class="view" id="view-menu">
+    <div class="grid">
+      <div class="panel">
+        <h2>📝 セットメニューを作る</h2>
+        <p style="font-size:12px;color:var(--sub);margin:-8px 0 14px">
+          いつものメニュー（例：「胸の日」「脚の日」）を登録しておくと、来店時にまとめて記録できます。現在のジム：<b id="menuGymName" style="color:var(--gold2)"></b>
+        </p>
+        <div class="field"><label>メニュー名</label><input type="text" id="menuName" placeholder="例：胸の日 / PUSH"></div>
+        <div style="border-top:1px solid var(--line);margin:6px 0 14px"></div>
+        <label style="font-size:12px;font-weight:700;color:var(--sub)">種目を追加</label>
+        <div class="field" style="margin-top:6px"><div class="chips" id="menuPartChips"></div></div>
+        <div class="field" style="background:#101013;border:1px solid var(--line);border-radius:11px;padding:12px">
+          <label>✏️ この部位に新しい種目を追加（いくつでもOK）</label>
+          <div style="display:flex;gap:8px">
+            <input type="text" id="menuCustomName" placeholder="例：インクラインダンベルプレス" style="flex:1">
+            <button class="btn btn-gold" id="menuCustomAdd" style="white-space:nowrap;padding:10px 14px">＋ 種目</button>
+          </div>
+          <div class="chips" id="menuCustomList" style="margin-top:10px"></div>
+        </div>
+        <div class="field"><select id="menuExSelect"></select></div>
+        <div class="row3">
+          <div class="field"><label>重量(kg)</label><input type="number" id="menuW" value="40" step="0.5"></div>
+          <div class="field"><label>回数</label><input type="number" id="menuR" value="10"></div>
+          <div class="field"><label>セット</label><input type="number" id="menuS" value="3"></div>
+        </div>
+        <button class="btn btn-ghost" id="menuAddItem" style="width:100%">＋ この種目をメニューに追加</button>
+        <div style="margin-top:14px" id="menuDraftList"></div>
+        <button class="btn btn-gold" id="menuSave" style="width:100%;margin-top:14px">💾 このメニューを保存</button>
+      </div>
+      <div class="panel">
+        <h2>登録済みメニュー</h2>
+        <div id="menuList"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========== CHARACTER ========== -->
+  <section class="view" id="view-character">
+    <div class="grid">
+      <div class="panel">
+        <h2>きんに君 — 育成ステータス</h2>
+        <div class="charstage" style="min-height:480px">
+          <div class="bubble show" id="charPageBubble"></div>
+          <div id="charMount3"></div>
+          <div class="floor"></div>
+        </div>
+      </div>
+      <div class="panel">
+        <h2>部位ごとのレベル</h2>
+        <p style="font-size:12px;color:var(--sub);margin:-8px 0 14px">
+          各部位を <b style="color:var(--gold2)">10・20・30・50・100・365日</b> 鍛えるごとにレベルUP！筋肉が大きくなります。
+        </p>
+        <div id="charParts" class="partlist"></div>
+        <h2 style="margin-top:22px">🏆 タンパク質によるからだ全体の成長</h2>
+        <div id="charBody"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========== PROTEIN ========== -->
+  <section class="view" id="view-protein">
+    <div class="grid">
+      <div class="panel">
+        <h2>タンパク質チェックリスト</h2>
+        <div class="field" style="max-width:240px">
+          <label>あなたの体重 (kg)</label>
+          <input type="number" id="bw" value="72" min="20" step="0.1">
+        </div>
+        <div class="protein-head">
+          <div class="ring" id="proteinRing"></div>
+          <div>
+            <div style="font-size:13px;color:var(--sub)">1日の目標タンパク質</div>
+            <div style="font-size:30px;font-weight:800" id="proteinTarget">— g</div>
+            <div style="font-size:12px;color:var(--gold-dim);font-weight:700">体重 × 1.6g</div>
+          </div>
+        </div>
+        <button class="btn btn-gold" id="proteinToday" style="width:100%">🥩 今日の目標を達成した！</button>
+        <p style="font-size:12px;color:var(--sub);margin-top:10px">
+          達成した日をタップで記録 / 取り消し。連続して達成するほど、からだ全体が大きくなります。
+        </p>
+        <div class="pcal" id="proteinCal" style="margin-top:14px"></div>
+      </div>
+      <div class="panel">
+        <h2>からだ全体の成長</h2>
+        <div class="charstage" style="min-height:360px">
+          <div class="bubble show" id="proteinBubble"></div>
+          <div id="charMount4"></div>
+          <div class="floor"></div>
+        </div>
+        <div id="proteinBody" style="margin-top:14px"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========== GYM ========== -->
+  <section class="view" id="view-gym">
+    <div class="panel">
+      <h2>マイジムを登録</h2>
+      <p style="font-size:12px;color:var(--sub);margin:-8px 0 16px">
+        通っているジムを選ぶと、そこにある器具を検索して、トレーニング記録の種目が自動でそのジム仕様に切り替わります。
+      </p>
+      <div class="field" style="max-width:420px">
+        <label>🔍 ジム名で検索</label>
+        <input type="text" id="gymSearch" placeholder="例：エニタイム / ゴールド / チョコザップ ...">
+      </div>
+      <div class="gymgrid" id="gymList"></div>
+    </div>
+    <div class="panel">
+      <h2>カスタムジムを作る</h2>
+      <div class="field" style="max-width:420px">
+        <label>ジム名</label>
+        <input type="text" id="customGymName" placeholder="例：〇〇スポーツジム 本店">
+      </div>
+      <label style="font-size:12px;font-weight:700;color:var(--sub)">置いてある器具にチェック</label>
+      <div class="equipgrid" id="equipPicker"></div>
+      <button class="btn btn-gold" id="saveCustomGym" style="margin-top:16px">＋ このジムを登録して使う</button>
+    </div>
+  </section>
+
+  <!-- ========== HISTORY ========== -->
+  <section class="view" id="view-history">
+    <div class="panel">
+      <h2>トレーニング履歴</h2>
+      <div id="historyTable"></div>
+    </div>
+  </section>
+
+  <!-- ========== ARENA (rivals) ========== -->
+  <section class="view" id="view-arena">
+    <div class="grid">
+      <div class="panel">
+        <h2>⚔️ ライバル対戦</h2>
+        <p style="font-size:12px;color:var(--sub);margin:-8px 0 12px">
+          ライバルを<b style="color:var(--gold2)">応援（1日1人）</b>するとお礼に強化の飴がもらえます。<b style="color:var(--gold2)">腕相撲（3日に1回）</b>で勝負！からだ全体＋部位レベルの合計が高い方の勝率が70%。負けたら翌日タンパク質2倍！
+        </p>
+        <div id="arenaInfo" style="margin-bottom:14px"></div>
+        <div id="arenaList"></div>
+      </div>
+      <div class="panel">
+        <h2>🍬 強化の飴とは？</h2>
+        <p style="font-size:13px;color:var(--sub);line-height:1.7">
+          ・ライバルから<b style="color:var(--gold2)">エール（応援）</b>をもらうと1個もらえます。<br>
+          ・トレーニング記録のときに使うと、<b style="color:var(--gold2)">そのトレーニングのレベル上昇が2倍</b>になります（その部位の育成が1日分多く進む）。<br>
+          ・「トレーニング記録」画面の保存ボタン上に、飴を持っているとチェック欄が出ます。
+        </p>
+        <h2 style="margin-top:20px">💪 腕相撲のルール</h2>
+        <p style="font-size:13px;color:var(--sub);line-height:1.7">
+          ・挑戦は<b style="color:var(--gold2)">3日に1回</b>まで。<br>
+          ・勝敗は<b style="color:var(--gold2)">「からだ全体レベル＋全部位レベルの合計（パワー）」</b>で決定。合計が高い方の勝率が70%。<br>
+          ・負けた人は<b style="color:var(--red)">翌日のタンパク質目標が2倍</b>になり、2倍取らないと達成できません。
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========== FEEDBACK ========== -->
+  <section class="view" id="view-feedback">
+    <div class="grid">
+      <div class="panel">
+        <h2>💡 アプリ改善フォーム</h2>
+        <p style="font-size:12px;color:var(--sub);margin:-8px 0 16px">
+          「こんな機能がほしい」「ここを直してほしい」を送ってください。内容は開発者(Claude)に報告されます。
+        </p>
+        <div class="field">
+          <label>種類</label>
+          <div class="chips" id="fbTypeChips">
+            <div class="chip on" data-fbtype="要望">💡 要望</div>
+            <div class="chip" data-fbtype="バグ">🐛 不具合</div>
+            <div class="chip" data-fbtype="感想">💬 感想</div>
+          </div>
+        </div>
+        <div class="field"><label>内容</label>
+          <textarea id="fbText" rows="5" placeholder="例：体重の推移グラフがほしい！" style="width:100%;background:#0e0e11;border:1px solid var(--line);color:var(--txt);padding:11px 13px;border-radius:10px;font-size:14px;font-family:inherit;resize:vertical"></textarea>
+        </div>
+        <button class="btn btn-gold" id="fbSend" style="width:100%">📨 送信する</button>
+        <p style="font-size:11px;color:var(--sub);margin-top:10px">
+          ※このアプリは端末内で動くため、下の「Claude報告用にコピー」でテキストをコピーし、Claudeに貼り付けると確実に開発へ届きます。
+        </p>
+      </div>
+      <div class="panel">
+        <h2>送信した要望 <span class="right" id="fbCopy">📋 Claude報告用にコピー</span></h2>
+        <div id="fbList"></div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<!-- ===== Bottom Tab Bar (mobile) ===== -->
+<nav class="bottomnav" id="bottomNav">
+  <div class="bn-inner">
+    <a data-view="dash" class="active"><span class="ic">🏠</span>ホーム</a>
+    <a data-view="record"><span class="ic">🏋️</span>記録</a>
+    <a data-view="menu"><span class="ic">📝</span>メニュー</a>
+    <a data-view="character"><span class="ic">💪</span>きんに君</a>
+    <a data-view="protein"><span class="ic">🥩</span>タンパク</a>
+    <a data-view="arena"><span class="ic">⚔️</span>対戦</a>
+    <a data-view="gym"><span class="ic">📍</span>ジム</a>
+    <a data-view="history"><span class="ic">📋</span>履歴</a>
+  </div>
+</nav>
+
+<!-- ===== Login / Profile ===== -->
+<div class="login" id="loginScreen">
+  <div class="box">
+    <div class="logo-lg">◆</div>
+    <h2>IRON LOG</h2>
+    <p class="sub">名前と性別を選んでログイン。1つのリンクを家族・友達みんなで使えます💪</p>
+    <div class="profile-cards" id="profileCards"></div>
+    <div class="formcard">
+      <h3 id="formTitle">＋ 新しく始める</h3>
+      <div class="field"><label>名前（ニックネーム）</label><input type="text" id="loginName" placeholder="例：Daichi"></div>
+      <label style="font-size:12px;font-weight:700;color:var(--sub)">性別（きんに君の見た目が変わります）</label>
+      <div class="genderpick" id="genderPick">
+        <div class="gbtn on" data-gender="male"><div class="gprev" id="prevMale"></div>男性</div>
+        <div class="gbtn" data-gender="female"><div class="gprev" id="prevFemale"></div>女性</div>
+      </div>
+      <button class="btn btn-gold" id="loginStart" style="width:100%">🔥 はじめる</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== Visit Modal ===== -->
+<div class="overlay" id="visitModal">
+  <div class="modal">
+    <span class="x" data-close>×</span>
+    <h3>🔥 ジムに来店！</h3>
+    <p style="color:var(--sub);font-size:13px;margin-bottom:16px">今日も来たな！どこ鍛える？</p>
+    <div class="welcome">
+      <div class="mini" id="charMountModal"></div>
+      <div class="msg" id="welcomeMsg"></div>
+    </div>
+    <div class="field" style="background:#101013;border:1px solid var(--line);border-radius:11px;padding:12px">
+      <label>⚡ セットメニューでまとめて記録</label>
+      <div style="display:flex;gap:8px">
+        <select id="mMenu" style="flex:1"></select>
+        <button class="btn btn-gold" id="mMenuLog" style="white-space:nowrap;padding:10px 14px">まとめて記録</button>
+      </div>
+    </div>
+    <div style="text-align:center;color:var(--sub);font-size:11px;margin:4px 0 10px">— または1種目ずつ記録 —</div>
+    <div class="field">
+      <label>部位</label>
+      <div class="chips" id="mPartChips"></div>
+    </div>
+    <div class="field"><label>種目</label><select id="mEx"></select></div>
+    <div class="row3">
+      <div class="field"><label>重量(kg)</label><input type="number" id="mW" value="40" step="0.5"></div>
+      <div class="field"><label>回数</label><input type="number" id="mR" value="10"></div>
+      <div class="field"><label>セット</label><input type="number" id="mS" value="3"></div>
+    </div>
+    <label class="eqchk" id="mBoostRow" style="display:none;margin-bottom:12px;border-color:var(--gold-dim);color:var(--gold2)">
+      <input type="checkbox" id="mUseCandy"> 🍬 強化の飴を使う（レベル2倍）<span id="mCandyCount" style="color:var(--sub)"></span>
+    </label>
+    <button class="btn btn-gold" id="mSave" style="width:100%">💪 記録して応援してもらう</button>
+  </div>
+</div>
+
+<!-- ===== Battle Result Modal ===== -->
+<div class="overlay" id="battleModal">
+  <div class="modal" style="max-width:420px">
+    <span class="x" data-bclose>×</span>
+    <h3 style="text-align:center">💪 腕相撲バトル</h3>
+    <div id="battleModalBody" style="margin:14px 0"></div>
+    <button class="btn btn-gold" id="battleOk" style="width:100%">OK</button>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* =================== DATA =================== */
+const MILESTONES=[10,20,30,50,100,365];
+const PARTS=[
+  {key:"chest",name:"胸",muscles:["chestL","chestR"]},
+  {key:"shoulder",name:"肩",muscles:["delL","delR"]},
+  {key:"back",name:"背中",muscles:["latL","latR"]},
+  {key:"arm",name:"腕",muscles:["armL","armR"]},
+  {key:"abs",name:"腹筋",muscles:["abs"]},
+  {key:"leg",name:"脚",muscles:["thighL","thighR","calfL","calfR"]},
+  {key:"glute",name:"お尻",muscles:["hip"]},
+];
+const EQUIP={
+  bodyweight:"自重",dumbbell:"ダンベル",barbell:"バーベル",bench:"ベンチ台",smith:"スミスマシン",
+  cable:"ケーブルマシン",latpull:"ラットプルダウン",chestpress:"チェストプレス",pecfly:"ペックフライ",
+  shoulderpress:"ショルダープレス",legpress:"レッグプレス",legext:"レッグエクステンション",
+  legcurl:"レッグカール",squat_rack:"スクワットラック",chinning:"懸垂バー",dipstand:"ディップススタンド",
+  abroller:"アブローラー",hipthrust:"ヒップスラスト台",abductor:"アブダクター"
+};
+// req: 必要器具（bodyweightは常に可）。すべて揃っていれば実施可能
+const EXERCISES=[
+  // 胸
+  {n:"ベンチプレス",p:"chest",req:["barbell","bench"]},
+  {n:"インクラインベンチプレス",p:"chest",req:["barbell","bench"]},
+  {n:"ダンベルプレス",p:"chest",req:["dumbbell","bench"]},
+  {n:"ダンベルフライ",p:"chest",req:["dumbbell","bench"]},
+  {n:"チェストプレス(マシン)",p:"chest",req:["chestpress"]},
+  {n:"ペックフライ(マシン)",p:"chest",req:["pecfly"]},
+  {n:"ケーブルクロスオーバー",p:"chest",req:["cable"]},
+  {n:"スミスベンチプレス",p:"chest",req:["smith","bench"]},
+  {n:"ディップス",p:"chest",req:["dipstand"]},
+  {n:"腕立て伏せ",p:"chest",req:["bodyweight"]},
+  // 肩
+  {n:"ダンベルショルダープレス",p:"shoulder",req:["dumbbell"]},
+  {n:"ショルダープレス(マシン)",p:"shoulder",req:["shoulderpress"]},
+  {n:"サイドレイズ",p:"shoulder",req:["dumbbell"]},
+  {n:"フロントレイズ",p:"shoulder",req:["dumbbell"]},
+  {n:"リアレイズ",p:"shoulder",req:["dumbbell"]},
+  {n:"アップライトロウ",p:"shoulder",req:["barbell"]},
+  {n:"ケーブルサイドレイズ",p:"shoulder",req:["cable"]},
+  {n:"パイクプッシュアップ",p:"shoulder",req:["bodyweight"]},
+  // 背中
+  {n:"デッドリフト",p:"back",req:["barbell"]},
+  {n:"ベントオーバーロウ",p:"back",req:["barbell"]},
+  {n:"ワンハンドロウ",p:"back",req:["dumbbell"]},
+  {n:"ラットプルダウン",p:"back",req:["latpull"]},
+  {n:"シーテッドロウ",p:"back",req:["cable"]},
+  {n:"懸垂(チンニング)",p:"back",req:["chinning"]},
+  {n:"バックエクステンション",p:"back",req:["bodyweight"]},
+  // 腕
+  {n:"バーベルカール",p:"arm",req:["barbell"]},
+  {n:"ダンベルカール",p:"arm",req:["dumbbell"]},
+  {n:"ハンマーカール",p:"arm",req:["dumbbell"]},
+  {n:"ケーブルカール",p:"arm",req:["cable"]},
+  {n:"トライセプスプレスダウン",p:"arm",req:["cable"]},
+  {n:"フレンチプレス",p:"arm",req:["dumbbell"]},
+  {n:"キックバック",p:"arm",req:["dumbbell"]},
+  {n:"ナローベンチプレス",p:"arm",req:["barbell","bench"]},
+  {n:"ディップス(三頭)",p:"arm",req:["dipstand"]},
+  // 腹筋
+  {n:"クランチ",p:"abs",req:["bodyweight"]},
+  {n:"レッグレイズ",p:"abs",req:["bodyweight"]},
+  {n:"プランク",p:"abs",req:["bodyweight"]},
+  {n:"ロシアンツイスト",p:"abs",req:["bodyweight"]},
+  {n:"アブローラー",p:"abs",req:["abroller"]},
+  {n:"ケーブルクランチ",p:"abs",req:["cable"]},
+  // 脚
+  {n:"バーベルスクワット",p:"leg",req:["barbell","squat_rack"]},
+  {n:"スミススクワット",p:"leg",req:["smith"]},
+  {n:"レッグプレス",p:"leg",req:["legpress"]},
+  {n:"レッグエクステンション",p:"leg",req:["legext"]},
+  {n:"レッグカール",p:"leg",req:["legcurl"]},
+  {n:"ルーマニアンデッドリフト",p:"leg",req:["barbell"]},
+  {n:"ダンベルランジ",p:"leg",req:["dumbbell"]},
+  {n:"カーフレイズ",p:"leg",req:["bodyweight"]},
+  {n:"自重スクワット",p:"leg",req:["bodyweight"]},
+  // お尻
+  {n:"ヒップスラスト",p:"glute",req:["hipthrust","barbell"]},
+  {n:"ブルガリアンスクワット",p:"glute",req:["dumbbell"]},
+  {n:"アブダクション",p:"glute",req:["abductor"]},
+  {n:"ヒップリフト(自重)",p:"glute",req:["bodyweight"]},
+];
+const ALLEQ=Object.keys(EQUIP);
+const GYMS=[
+  {id:"lifefit_yagoto",name:"LifeFit 八事日赤店",desc:"24時間ジム。フリーウェイト＋スミス＋パワーラック＋主要マシン完備。",
+    eq:["bodyweight","dumbbell","barbell","bench","smith","cable","latpull","chestpress","pecfly","shoulderpress","legpress","legext","legcurl","squat_rack","chinning","dipstand","abductor","abroller"]},
+  {id:"fitplace24_handa",name:"FIT PLACE24 半田店",desc:"24時間ジム。フリーウェイト＋スミス＋セレクトマシン充実。",
+    eq:["bodyweight","dumbbell","barbell","bench","smith","cable","latpull","chestpress","pecfly","shoulderpress","legpress","legext","legcurl","squat_rack","chinning","dipstand","abductor","hipthrust","abroller"]},
+  {id:"fitplace24_obu",name:"FIT PLACE24 大府店",desc:"24時間ジム。フリーウェイト＋スミス＋セレクトマシン充実。",
+    eq:["bodyweight","dumbbell","barbell","bench","smith","cable","latpull","chestpress","pecfly","shoulderpress","legpress","legext","legcurl","squat_rack","chinning","dipstand","abductor","hipthrust","abroller"]},
+  {id:"full",name:"フルジム(デフォルト)",desc:"あらゆる器具が揃った大型ジム。全種目OK。",eq:ALLEQ},
+  {id:"gold",name:"ゴールドジム",desc:"フリーウェイト・マシン完備の本格ジム。",eq:ALLEQ},
+  {id:"anytime",name:"エニタイムフィットネス",desc:"フリーウェイト＋主要マシン。24時間営業。",
+    eq:["bodyweight","dumbbell","barbell","bench","smith","cable","latpull","chestpress","pecfly","shoulderpress","legpress","legext","legcurl","squat_rack","chinning","dipstand","abroller"]},
+  {id:"municipal",name:"市民体育館 / 公営ジム",desc:"フリーウェイト中心のシンプル構成。",
+    eq:["bodyweight","dumbbell","barbell","bench","smith","latpull","chestpress","legpress","legext","legcurl","squat_rack"]},
+  {id:"chocozap",name:"チョコザップ",desc:"軽量マシン中心。バーベルなし。",
+    eq:["bodyweight","chestpress","latpull","legpress","shoulderpress","abductor","abroller"]},
+  {id:"home",name:"自宅 / ホームジム",desc:"ダンベルと自重メイン。",
+    eq:["bodyweight","dumbbell","bench","abroller","chinning"]},
+];
+
+/* =================== STATE (multi-user) =================== */
+const LS="ironlog_v2", LS_OLD="ironlog_v1";
+function blankUser(gender){return {gender:gender||"male",trainings:[],protein:[],bw:gender==="female"?55:72,gym:"full",customGyms:[],menus:[],customExercises:[],mode:"mobile",lastSeen:Date.now(),candy:0,bonus:{},lastYellDate:null,lastBattleDate:null,proteinPenalty:null,lastEventTs:0};}
+function normUser(u,gender){u.gender=u.gender||gender||"male";if(!u.menus)u.menus=[];if(!u.customGyms)u.customGyms=[];if(!u.customExercises)u.customExercises=[];if(!u.mode)u.mode="mobile";if(u.bw==null)u.bw=72;if(!u.trainings)u.trainings=[];if(!u.protein)u.protein=[];if(u.lastSeen==null)u.lastSeen=Date.now();if(u.candy==null)u.candy=0;if(!u.bonus)u.bonus={};if(u.lastYellDate===undefined)u.lastYellDate=null;if(u.lastBattleDate===undefined)u.lastBattleDate=null;if(u.proteinPenalty===undefined)u.proteinPenalty=null;if(u.lastEventTs==null)u.lastEventTs=0;return u;}
+function normRoot(d){if(!d.feed)d.feed=[];if(!d.feedback)d.feedback=[];if(!d.events)d.events=[];return d;}
+function loadRoot(){
+  try{const d=JSON.parse(localStorage.getItem(LS));if(d&&d.users){Object.keys(d.users).forEach(k=>normUser(d.users[k]));return normRoot(d);}}catch(e){}
+  // v1(単一ユーザー)からの移行：既存データを「Daichi」として引き継ぐ
+  try{const old=JSON.parse(localStorage.getItem(LS_OLD));
+    if(old&&(old.trainings||old.protein)){return normRoot({current:"Daichi",users:{"Daichi":normUser(old,"male")}});}
+  }catch(e){}
+  return normRoot({current:null,users:{}});
+}
+let ROOT=loadRoot();
+let S=ROOT.current?ROOT.users[ROOT.current]:blankUser("male"); // ログイン前は仮state
+function save(){if(ROOT.current)ROOT.users[ROOT.current]=S;localStorage.setItem(LS,JSON.stringify(ROOT));}
+function userList(){return Object.keys(ROOT.users);}
+const todayStr=()=>{const d=new Date();return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");};
+
+/* =================== HELPERS =================== */
+function currentGym(){
+  return GYMS.find(g=>g.id===S.gym) || S.customGyms.find(g=>g.id===S.gym) || GYMS[0];
+}
+function gymHas(eq){const g=currentGym();return g.eq.includes(eq);}
+function exAvailable(ex){return ex.req.every(r=>r==="bodyweight"||gymHas(r));}
+function rawPartDays(u,pk){return new Set(u.trainings.filter(t=>t.p===pk).map(t=>t.date)).size;}
+function partDaysOf(u,pk){return rawPartDays(u,pk)+((u.bonus&&u.bonus[pk])||0);} // 強化の飴でブースト
+function partDays(pk){return partDaysOf(S,pk);}
+function levelFromDays(d){let lv=0;for(const m of MILESTONES)if(d>=m)lv++;return lv;}
+function nextMile(d){for(const m of MILESTONES)if(d<m)return m;return null;}
+function proteinDays(){return S.protein.length;}
+function bodyLevelOf(u){return levelFromDays((u.protein||[]).length);}
+function bodyLevel(){return bodyLevelOf(S);}
+function powerScore(u){return bodyLevelOf(u)+PARTS.reduce((a,p)=>a+levelFromDays(partDaysOf(u,p.key)),0);} // からだ全体＋全部位レベルの合計
+function muscleScale(lv){return 1+lv*0.085;}        // 0..6 -> 1..1.51
+function bodyScale(){return 1+bodyLevel()*0.03;}     // 全身
+function uniqueTrainDates(){return [...new Set(S.trainings.map(t=>t.date))].sort();}
+function streak(){
+  const ds=new Set(S.trainings.map(t=>t.date));let s=0;let d=new Date();
+  // allow today or yesterday as start
+  const t=todayStr();if(!ds.has(t)){d.setDate(d.getDate()-1);}
+  while(true){const k=d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
+    if(ds.has(k)){s++;d.setDate(d.getDate()-1);}else break;}
+  return s;
+}
+
+/* =================== CHARACTER SVG =================== */
+// 中心座標（その筋肉グループを拡大する基準点）— ソイ！ポーズ(フロントダブルバイセップス)
+const MC={
+  chestL:[140,150],chestR:[180,150],delL:[118,126],delR:[202,126],
+  latL:[120,185],latR:[200,185],armL:[84,95],armR:[236,95],
+  abs:[160,205],thighL:[120,288],thighR:[200,288],calfL:[100,322],calfR:[220,322],hip:[160,255]
+};
+function buildSVG(gender){
+  gender = gender || (typeof S==="object"&&S&&S.gender) || "male";
+  const female = gender==="female";
+  // 髪（背面ポニーテール / 前面）
+  const hairBehind = female
+    ? `<path d="M182 52 Q220 44 222 74 Q220 100 196 92 Q186 70 182 52 Z" fill="#2e2410" stroke="#2e2410"/><circle cx="184" cy="56" r="6" fill="#1b1b1f" stroke="#000"/>`
+    : ``;
+  const hairFront = female
+    ? `<path d="M131 82 Q126 40 160 36 Q194 40 189 82 Q184 62 176 58 Q168 54 160 54 Q152 54 144 58 Q136 62 131 82 Z" fill="#2e2410" stroke="#2e2410"/>`
+    : `<path d="M134 70 L137 42 L149 56 L160 34 L171 56 L183 42 L186 70 Q160 52 134 70 Z" fill="#241d0e" stroke="#241d0e"/>`;
+  // スポーツブラ（女性のみ・胸の上に重ねる装飾）
+  const chestCover = female
+    ? `<path d="M116 132 Q160 152 204 132 L202 168 Q160 184 118 168 Z" fill="#1b1b1f" stroke="#000"/>
+       <path d="M132 134 Q142 116 152 114" stroke="#1b1b1f" stroke-width="6" fill="none" stroke-linecap="round"/>
+       <path d="M188 134 Q178 116 168 114" stroke="#1b1b1f" stroke-width="6" fill="none" stroke-linecap="round"/>`
+    : ``;
+  const lashes = female
+    ? `<path d="M147 73 L150 71" stroke="#241d0e" stroke-width="2.2" fill="none"/><path d="M173 73 L170 71" stroke="#241d0e" stroke-width="2.2" fill="none"/>`
+    : ``;
+  const browW = female ? 2.2 : 3;
+  return `<svg id="kinSvg" viewBox="0 0 320 352" width="100%" style="max-width:290px;display:block">
+  <defs>
+    <linearGradient id="skin" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#f3dc8c"/><stop offset="1" stop-color="#c79a35"/>
+    </linearGradient>
+    <linearGradient id="skin2" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#e7c75f"/><stop offset="1" stop-color="#a9842b"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="0.5" cy="0.4" r="0.6">
+      <stop offset="0" stop-color="rgba(240,215,122,.5)"/><stop offset="1" stop-color="transparent"/>
+    </radialGradient>
+    <filter id="soft"><feGaussianBlur stdDeviation="0.5"/></filter>
+  </defs>
+  <g id="bodyRoot" stroke="#5e4a18" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round">
+    <!-- ===== LEGS : ワイドスタンス ===== -->
+    <g class="muscle" id="m-thighL"><path d="M156 244 Q120 258 92 298 Q88 314 110 316 Q146 300 162 256 Z" fill="url(#skin)"/></g>
+    <g class="muscle" id="m-thighR"><path d="M164 244 Q200 258 228 298 Q232 314 210 316 Q174 300 158 256 Z" fill="url(#skin)"/></g>
+    <g class="muscle" id="m-calfL"><path d="M96 296 Q84 316 90 338 L114 338 Q118 318 110 306 Z" fill="url(#skin2)"/></g>
+    <g class="muscle" id="m-calfR"><path d="M224 296 Q236 316 230 338 L206 338 Q202 318 210 306 Z" fill="url(#skin2)"/></g>
+    <ellipse cx="100" cy="340" rx="16" ry="6" fill="#241d0e" stroke="none"/>
+    <ellipse cx="220" cy="340" rx="16" ry="6" fill="#241d0e" stroke="none"/>
+    <!-- ===== briefs (黒パンツ) ===== -->
+    <g class="muscle" id="m-hip"><path d="M130 236 Q160 250 190 236 L184 270 Q160 282 136 270 Z" fill="#1b1b1f" stroke="#000"/></g>
+    <!-- ===== torso base ===== -->
+    <path d="M126 120 Q160 110 194 120 L188 244 Q160 256 132 244 Z" fill="url(#skin)"/>
+    <!-- ===== lats / obliques ===== -->
+    <g class="muscle" id="m-latL"><path d="M130 148 Q108 176 116 216 L136 204 L134 156 Z" fill="url(#skin2)"/></g>
+    <g class="muscle" id="m-latR"><path d="M190 148 Q212 176 204 216 L184 204 L186 156 Z" fill="url(#skin2)"/></g>
+    <!-- ===== ARMS UP : ダブルバイセップス ===== -->
+    <g class="muscle" id="m-armL">
+      <path d="M122 118 Q92 98 70 100 Q58 112 78 124 Q106 128 124 134 Z" fill="url(#skin)"/>
+      <ellipse cx="92" cy="106" rx="18" ry="14" fill="url(#skin)"/>
+      <path d="M70 100 Q56 74 76 52 L94 56 Q96 82 88 112 Z" fill="url(#skin2)"/>
+      <circle cx="84" cy="48" r="12" fill="url(#skin)"/>
+    </g>
+    <g class="muscle" id="m-armR">
+      <path d="M198 118 Q228 98 250 100 Q262 112 242 124 Q214 128 196 134 Z" fill="url(#skin)"/>
+      <ellipse cx="228" cy="106" rx="18" ry="14" fill="url(#skin)"/>
+      <path d="M250 100 Q264 74 244 52 L226 56 Q224 82 232 112 Z" fill="url(#skin2)"/>
+      <circle cx="236" cy="48" r="12" fill="url(#skin)"/>
+    </g>
+    <!-- ===== delts ===== -->
+    <g class="muscle" id="m-delL"><ellipse cx="120" cy="126" rx="23" ry="21" fill="url(#skin)"/></g>
+    <g class="muscle" id="m-delR"><ellipse cx="200" cy="126" rx="23" ry="21" fill="url(#skin)"/></g>
+    <!-- ===== traps ===== -->
+    <path d="M140 102 Q160 94 180 102 L184 120 Q160 112 136 120 Z" fill="url(#skin2)"/>
+    <!-- ===== pecs ===== -->
+    <g class="muscle" id="m-chestL"><path d="M159 126 Q126 128 120 152 Q124 176 159 172 Z" fill="url(#skin)"/></g>
+    <g class="muscle" id="m-chestR"><path d="M161 126 Q194 128 200 152 Q196 176 161 172 Z" fill="url(#skin)"/></g>
+    ${chestCover}
+    <!-- ===== abs (シックスパック) ===== -->
+    <g class="muscle" id="m-abs">
+      <path d="M138 172 Q160 166 182 172 L178 238 Q160 248 142 238 Z" fill="url(#skin2)"/>
+      <g stroke="#5e4a18" stroke-width="1.6" opacity=".8" fill="none">
+        <line x1="160" y1="174" x2="160" y2="236"/>
+        <line x1="143" y1="190" x2="177" y2="190"/>
+        <line x1="143" y1="206" x2="177" y2="206"/>
+        <line x1="144" y1="222" x2="176" y2="222"/>
+      </g>
+    </g>
+    <!-- ===== neck ===== -->
+    <path d="M150 94 L170 94 L173 114 L147 114 Z" fill="url(#skin)"/>
+    ${hairBehind}
+    <!-- ===== head ===== -->
+    <ellipse cx="135" cy="74" rx="5" ry="7" fill="url(#skin)"/>
+    <ellipse cx="185" cy="74" rx="5" ry="7" fill="url(#skin)"/>
+    <ellipse cx="160" cy="72" rx="25" ry="28" fill="url(#skin)"/>
+    ${hairFront}
+    <!-- 眉 -->
+    <path d="M145 66 L157 71" stroke="#241d0e" stroke-width="${browW}" fill="none"/>
+    <path d="M175 66 L163 71" stroke="#241d0e" stroke-width="${browW}" fill="none"/>
+    ${lashes}
+    <!-- 目 -->
+    <circle cx="151" cy="76" r="2.6" fill="#241d0e" stroke="none"/>
+    <circle cx="169" cy="76" r="2.6" fill="#241d0e" stroke="none"/>
+    <!-- 口 (気合い) -->
+    <path d="M152 87 Q160 92 168 87" stroke="#241d0e" stroke-width="2.4" fill="none"/>
+  </g>
+  <text x="252" y="180" font-size="22" font-weight="900" fill="#f0d77a" stroke="none" transform="rotate(-8 252 180)" style="font-family:sans-serif">ソイ！</text>
+  </svg>`;
+}
+function applyMuscles(svg){
+  if(!svg)return;
+  PARTS.forEach(p=>{
+    const lv=levelFromDays(partDays(p.key));
+    const s=muscleScale(lv);
+    p.muscles.forEach(m=>{
+      const el=svg.querySelector("#m-"+m);if(!el)return;
+      const [cx,cy]=MC[m];
+      el.setAttribute("transform",`translate(${cx} ${cy}) scale(${s.toFixed(3)}) translate(${-cx} ${-cy})`);
+      el.style.filter = lv>=4 ? "drop-shadow(0 0 6px rgba(240,215,122,.6))" : "none";
+    });
+  });
+  const root=svg.querySelector("#bodyRoot");
+  if(root){const bs=bodyScale();root.setAttribute("transform",`translate(150 320) scale(${bs.toFixed(3)}) translate(-150 -320)`);}
+}
+function mountChar(id){
+  const el=document.getElementById(id);if(!el)return;
+  // グラデ/フィルタ定義IDをこのSVG内でユニーク化（display:none下の重複参照バグ回避）
+  let html=buildSVG(S.gender);
+  ["skin2","skin","glow","soft"].forEach(g=>{
+    const u=g+"_"+id;
+    html=html.split('id="'+g+'"').join('id="'+u+'"').split('url(#'+g+')').join('url(#'+u+')').split('filter="url(#'+g+')"').join('filter="url(#'+u+')"');
+  });
+  el.innerHTML=html;applyMuscles(el.querySelector("svg"));
+}
+function refreshAllChars(){["charMount","charMount2","charMount3","charMount4","charMountModal"].forEach(mountChar);}
+
+/* =================== MESSAGES =================== */
+const CHEER=["ナイスバルク！その調子や！","筋肉は裏切らへんで！💪","今日の自分が一番強い！","パワー！！もう一回いこか！",
+  "効いてる効いてる！最高や！","フォーム完璧やで、Daichi！","ええ追い込みや！誇らしい！","限界の先に成長があるんや！",
+  "その重量、軽く見えてきたで！","継続は力なり、ホンマやで！"];
+const WELCOME=["いらっしゃい！今日も来てえらいで！💛","待ってたで！さあ鍛えていこか！","来店ありがとう！今日も最高の1日にしよ！",
+  "おっ、やる気の顔やな！ええで！","ようこそ！一緒に強くなろうな！"];
+const rand=a=>a[Math.floor(Math.random()*a.length)];
+function bubble(id,msg){const b=document.getElementById(id);if(!b)return;b.textContent=msg;b.classList.add("show");
+  clearTimeout(b._t);b._t=setTimeout(()=>b.classList.remove("show"),4000);}
+function toast(msg){const t=document.getElementById("toast");t.textContent=msg;t.classList.add("show");
+  clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove("show"),2600);}
+
+/* =================== RENDER =================== */
+function renderStats(){
+  const totalW=S.trainings.reduce((a,t)=>a+t.w*t.r*t.s,0);
+  const days=uniqueTrainDates().length;
+  const sets=S.trainings.reduce((a,t)=>a+ +t.s,0);
+  const cal=Math.round(totalW*0.04);
+  const cards=[
+    ["⏱️","ワークアウト数",days+" 回","通算"],
+    ["🏋️","総挙上重量",totalW.toLocaleString()+" kg","累計ボリューム"],
+    ["🔥","推定消費カロリー",cal.toLocaleString()+" kcal","ざっくり目安"],
+    ["📊","総セット数",sets+" set","積み上げ"],
+    ["🗓️","継続日数",streak()+" 日","連続記録 🔥"],
+  ];
+  document.getElementById("statRow").innerHTML=cards.map(c=>
+    `<div class="stat"><div class="ic">${c[0]}</div><label>${c[1]}</label><div class="v">${c[2]}</div><div class="d">${c[3]}</div></div>`).join("");
+}
+function partRowHTML(p,big){
+  const d=partDays(p.key),lv=levelFromDays(d),nm=nextMile(d);
+  const prevM=lv>0?MILESTONES[lv-1]:0; const tgt=nm||365;
+  const pct=nm? Math.round((d-prevM)/(tgt-prevM)*100) : 100;
+  return `<div class="partrow">
+    <div class="top"><span class="name">${p.name}</span><span class="lv">Lv.${lv}</span></div>
+    <div class="bar"><i style="width:${Math.max(4,Math.min(100,pct))}%"></i></div>
+    <div class="meta">${d}日 鍛えた ${nm?`／ あと ${nm-d}日 でLv.${lv+1}`:"／ MAX到達！🏆"}</div>
+  </div>`;
+}
+function renderParts(){
+  document.getElementById("dashParts").innerHTML=PARTS.map(p=>partRowHTML(p)).join("");
+  document.getElementById("charParts").innerHTML=PARTS.map(p=>partRowHTML(p,1)).join("");
+  // body milestones on character page
+  const bd=proteinDays(),bl=bodyLevel();
+  document.getElementById("charBody").innerHTML=
+    `<div class="partrow"><div class="top"><span class="name">からだ全体 (タンパク質)</span><span class="lv">Lv.${bl}</span></div>
+     <div class="bar"><i style="width:${nextMile(bd)?Math.round((bd-(bl>0?MILESTONES[bl-1]:0))/((nextMile(bd))-(bl>0?MILESTONES[bl-1]:0))*100):100}%"></i></div>
+     <div class="meta">${bd}日 達成 ${nextMile(bd)?`／ あと ${nextMile(bd)-bd}日 でLv.${bl+1}`:"／ MAX！🏆"}</div></div>
+     <div class="lvlist">${MILESTONES.map(m=>`<div class="lvchip ${bd>=m?'hit':''}"><b>${m}日</b>${bd>=m?'達成✓':'未達'}</div>`).join("")}</div>`;
+}
+function renderRecent(){
+  const r=[...S.trainings].slice(-5).reverse();
+  document.getElementById("recentList").innerHTML = r.length? r.map(t=>{
+    const pn=PARTS.find(p=>p.key===t.p)?.name||"";
+    return `<div style="display:flex;justify-content:space-between;align-items:center;padding:11px 0;border-bottom:1px solid #1b1b1f">
+      <div><b style="font-size:14px">${t.ex}</b><div style="font-size:11px;color:var(--sub)">${t.date} ・ <span class="tag">${pn}</span></div></div>
+      <div style="text-align:right;font-size:13px;font-weight:700">${t.w}kg × ${t.r} × ${t.s}<div style="font-size:11px;color:var(--gold-dim)">1RM ≈ ${Math.round(t.w*(1+t.r/30))}kg</div></div>
+    </div>`;
+  }).join("") : `<div class="empty">まだ記録がありません。「ジムに来店」から記録しよう！</div>`;
+}
+function renderHistory(){
+  const r=[...S.trainings].reverse();
+  document.getElementById("historyTable").innerHTML = r.length? `<table><thead><tr>
+    <th>日付</th><th>部位</th><th>種目</th><th>重量×回数×セット</th><th>ボリューム</th><th>メモ</th><th></th></tr></thead><tbody>`+
+    r.map(t=>{const pn=PARTS.find(p=>p.key===t.p)?.name||"";
+      return `<tr><td>${t.date}</td><td><span class="tag">${pn}</span></td><td>${t.ex}</td>
+      <td>${t.w}kg × ${t.r} × ${t.s}</td><td>${(t.w*t.r*t.s).toLocaleString()}kg</td>
+      <td style="color:var(--sub)">${t.memo||"—"}</td><td><span class="del" data-del="${t.id}">削除</span></td></tr>`;}).join("")+
+    `</tbody></table>` : `<div class="empty">履歴はまだありません。</div>`;
+}
+function customForPart(pk){return (S.customExercises||[]).filter(e=>e.p===pk);}
+function fillExSelect(sel,pk){
+  const list=EXERCISES.filter(e=>e.p===pk && exAvailable(e));
+  const custom=customForPart(pk);
+  const opts=list.map(e=>`<option value="${e.n}">${e.n}</option>`)
+    .concat(custom.map(e=>`<option value="${e.n}">★ ${e.n}（自分の種目）</option>`));
+  sel.innerHTML = opts.length? opts.join("") : `<option value="">このジムには対応器具がありません</option>`;
+}
+let recPart="chest", mPart="chest";
+function renderCustomExList(){
+  const el=document.getElementById("customExList");if(!el)return;
+  const list=customForPart(recPart);
+  el.innerHTML = list.length
+    ? list.map(e=>`<span class="chip on" style="cursor:default">★ ${e.n} <span data-cxdel="${e.id}" style="margin-left:6px;cursor:pointer">✕</span></span>`).join("")
+    : `<span style="font-size:11px;color:var(--sub)">この部位の自分の種目はまだありません</span>`;
+}
+function renderRecord(){
+  document.getElementById("recGymName").textContent=currentGym().name;
+  document.getElementById("partChips").innerHTML=PARTS.map(p=>
+    `<div class="chip ${p.key===recPart?'on':''}" data-rp="${p.key}">${p.name}</div>`).join("");
+  fillExSelect(document.getElementById("exSelect"),recPart);
+  renderCustomExList();
+  // 強化の飴トグル
+  const row=document.getElementById("boostRow");
+  if(row){const has=(S.candy||0)>0;row.style.display=has?"flex":"none";
+    const cc=document.getElementById("candyCount");if(cc)cc.textContent="（保有 "+(S.candy||0)+"個）";
+    if(!has){const uc=document.getElementById("useCandy");if(uc)uc.checked=false;}}
+}
+function addCustomExercise(name,part){
+  part=part||recPart;
+  name=(name||"").trim();if(!name)return false;
+  if(EXERCISES.some(e=>e.p===part&&e.n===name)||customForPart(part).some(e=>e.n===name)){toast("同じ種目がすでにあります");return false;}
+  S.customExercises.push({id:"x"+Date.now(),n:name,p:part});save();
+  return true;
+}
+function renderModalChips(){
+  document.getElementById("mPartChips").innerHTML=PARTS.map(p=>
+    `<div class="chip ${p.key===mPart?'on':''}" data-mp="${p.key}">${p.name}</div>`).join("");
+  fillExSelect(document.getElementById("mEx"),mPart);
+  // menu quick-pick in modal
+  const ms=document.getElementById("mMenu");
+  if(ms)ms.innerHTML=`<option value="">（単発記録）</option>`+S.menus.map(m=>`<option value="${m.id}">${m.name}（${m.items.length}種目）</option>`).join("");
+  // 強化の飴トグル（モーダル）
+  const row=document.getElementById("mBoostRow");
+  if(row){const has=(S.candy||0)>0;row.style.display=has?"flex":"none";
+    const cc=document.getElementById("mCandyCount");if(cc)cc.textContent="（保有 "+(S.candy||0)+"個）";
+    const uc=document.getElementById("mUseCandy");if(uc&&!has)uc.checked=false;}
+}
+let menuPart="chest", menuDraft=[];
+const partName=k=>PARTS.find(p=>p.key===k)?.name||"";
+function renderMenu(){
+  document.getElementById("menuGymName").textContent=currentGym().name;
+  document.getElementById("menuPartChips").innerHTML=PARTS.map(p=>
+    `<div class="chip ${p.key===menuPart?'on':''}" data-menup="${p.key}">${p.name}</div>`).join("");
+  fillExSelect(document.getElementById("menuExSelect"),menuPart);
+  // custom exercises for this part
+  const mcl=document.getElementById("menuCustomList");
+  if(mcl){const cl=customForPart(menuPart);
+    mcl.innerHTML = cl.length
+      ? cl.map(e=>`<span class="chip on" style="cursor:default">★ ${e.n} <span data-mcxdel="${e.id}" style="margin-left:6px;cursor:pointer">✕</span></span>`).join("")
+      : `<span style="font-size:11px;color:var(--sub)">${partName(menuPart)}の自分の種目はまだありません</span>`;}
+  // draft list
+  document.getElementById("menuDraftList").innerHTML = menuDraft.length?
+    `<label style="font-size:12px;font-weight:700;color:var(--sub)">追加した種目（${menuDraft.length}）</label>`+
+    menuDraft.map((it,i)=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:9px 11px;background:#101013;border:1px solid var(--line);border-radius:9px;margin-top:6px">
+      <div><b style="font-size:13px">${it.ex}</b> <span class="tag">${partName(it.p)}</span><div style="font-size:11px;color:var(--sub)">${it.w}kg × ${it.r} × ${it.s}</div></div>
+      <span class="del" data-draftdel="${i}">削除</span></div>`).join("")
+    : `<div class="empty" style="padding:14px">まだ種目がありません。上から追加してください。</div>`;
+  // saved menus
+  document.getElementById("menuList").innerHTML = S.menus.length? S.menus.map(m=>
+    `<div class="gymcard" style="cursor:default;margin-bottom:12px">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <h4>📝 ${m.name}</h4><span class="del" data-menudel="${m.id}">削除</span>
+      </div>
+      <div style="margin:8px 0">${m.items.map(it=>`<div style="font-size:12px;color:var(--sub);padding:3px 0">・<b style="color:var(--txt)">${it.ex}</b> <span class="tag">${partName(it.p)}</span> ${it.w}kg×${it.r}×${it.s}</div>`).join("")}</div>
+      <button class="btn btn-gold" data-menulog="${m.id}" style="width:100%;padding:9px">💪 今日まとめて記録</button>
+    </div>`).join("") : `<div class="empty">まだメニューがありません。左で作成しましょう！</div>`;
+  // quick menu select on record view
+  const q=document.getElementById("quickMenu");
+  if(q)q.innerHTML = S.menus.length? S.menus.map(m=>`<option value="${m.id}">${m.name}（${m.items.length}種目）</option>`).join("")
+    : `<option value="">メニュー未登録</option>`;
+}
+function logMenu(id){
+  const m=S.menus.find(x=>x.id===id);if(!m||!m.items.length){toast("記録できるメニューがありません");return;}
+  let n=0;m.items.forEach(it=>{if(addTraining(it.p,it.ex,it.w,it.r,it.s,m.name)) n++;});
+  renderAll();
+  const msg=rand(CHEER);toast(`📝 ${m.name} を${n}種目まとめて記録！`+msg);
+  bubble("recBubble",msg);bubble("dashBubble",msg);
+}
+function penaltyToday(){return S.proteinPenalty===todayStr();} // 今日が2倍ペナルティ日か
+function renderProtein(){
+  const bw=S.bw||72, base=Math.round(bw*1.6);
+  const pen=penaltyToday(); const tgt=pen?base*2:base;
+  document.getElementById("proteinTarget").innerHTML = pen
+    ? `${tgt} g <span style="font-size:12px;color:var(--red);font-weight:800">⚔️敗北ペナルティ2倍</span>`
+    : tgt+" g";
+  document.getElementById("bw").value=bw;
+  // ring shows monthly progress (this month days done)
+  const done=proteinDays();
+  const ringPct=Math.min(100,Math.round(done/365*100));
+  const R=52,C=2*Math.PI*R;
+  document.getElementById("proteinRing").innerHTML=
+    `<svg width="120" height="120"><circle cx="60" cy="60" r="${R}" stroke="#1f1f24" stroke-width="11" fill="none"/>
+     <circle cx="60" cy="60" r="${R}" stroke="url(#rg)" stroke-width="11" fill="none" stroke-linecap="round"
+       stroke-dasharray="${C}" stroke-dashoffset="${C*(1-ringPct/100)}"/>
+     <defs><linearGradient id="rg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#f0d77a"/><stop offset="1" stop-color="#d4af37"/></linearGradient></defs></svg>
+     <div class="lab"><b>${done}</b><small>日達成</small></div>`;
+  // calendar: last 35 days
+  const cells=[];const t=todayStr();
+  for(let i=34;i>=0;i--){const d=new Date();d.setDate(d.getDate()-i);
+    const k=d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
+    cells.push(`<div class="pday ${S.protein.includes(k)?'done':''} ${k===t?'today':''}" data-pd="${k}">${d.getDate()}</div>`);}
+  document.getElementById("proteinCal").innerHTML=cells.join("");
+  // protein body panel
+  const bl=bodyLevel();
+  document.getElementById("proteinBody").innerHTML=
+    `<div style="text-align:center"><span class="lv" style="font-size:13px">からだ Lv.${bl}</span></div>
+     <div class="lvlist">${MILESTONES.map(m=>`<div class="lvchip ${done>=m?'hit':''}"><b>${m}日</b>${done>=m?'✓':''}</div>`).join("")}</div>`;
+  // dash protein
+  document.getElementById("dashProtein").innerHTML=
+    `<div style="display:flex;justify-content:space-between;align-items:center">
+      <div><div style="font-size:12px;color:var(--sub)">1日の目標</div><b style="font-size:22px">${tgt} g</b></div>
+      <div style="text-align:right"><div style="font-size:12px;color:var(--sub)">累計達成</div><b style="font-size:22px;color:var(--gold2)">${done} 日</b></div>
+    </div>
+    <button class="btn ${S.protein.includes(t)?'btn-ghost':'btn-gold'}" id="dashPBtn" style="width:100%;margin-top:14px">
+      ${S.protein.includes(t)?'✓ 今日は達成済み':'🥩 今日の目標を達成'}</button>`;
+  document.getElementById("dashPBtn").onclick=()=>{toggleProtein(t);};
+}
+function renderGym(){
+  const q=(document.getElementById("gymSearch").value||"").trim();
+  const all=[...GYMS,...S.customGyms];
+  const list=all.filter(g=>!q||g.name.includes(q));
+  document.getElementById("gymList").innerHTML=list.map(g=>{
+    const cnt=EXERCISES.filter(e=>e.req.every(r=>r==="bodyweight"||g.eq.includes(r))).length;
+    return `<div class="gymcard ${g.id===S.gym?'on':''}" data-gym="${g.id}">
+      <h4>${g.id===S.gym?'📍 ':''}${g.name}</h4>
+      <p>${g.desc||"カスタム登録ジム"}</p>
+      <p style="margin-top:8px;color:var(--gold-dim);font-weight:700">実施可能 ${cnt} 種目 ・ 器具 ${g.eq.length}種</p>
+    </div>`;}).join("");
+  // equip picker
+  document.getElementById("equipPicker").innerHTML=ALLEQ.map(k=>
+    `<label class="eqchk"><input type="checkbox" value="${k}" ${k==='bodyweight'?'checked disabled':''}>${EQUIP[k]}</label>`).join("");
+  document.querySelectorAll("#equipPicker .eqchk input").forEach(i=>i.onchange=e=>e.target.closest(".eqchk").classList.toggle("on",e.target.checked));
+  // dash gym
+  const g=currentGym();
+  document.getElementById("dashGym").innerHTML=
+    `<b style="font-size:16px">📍 ${g.name}</b>
+     <p style="font-size:12px;color:var(--sub);margin-top:6px">${g.desc||"カスタムジム"}</p>
+     <p style="font-size:12px;color:var(--gold-dim);font-weight:700;margin-top:8px">実施可能 ${EXERCISES.filter(exAvailable).length} 種目</p>`;
+}
+function renderBadges(){
+  const b=[];
+  PARTS.forEach(p=>{const lv=levelFromDays(partDays(p.key));if(lv>0)b.push(`${p.name} Lv.${lv}`);});
+  if(bodyLevel()>0)b.push(`💪 からだ Lv.${bodyLevel()}`);
+  if(streak()>=3)b.push(`🔥 ${streak()}日連続`);
+  document.getElementById("dashBadges").innerHTML = b.length? b.map(x=>`<span class="badge">🏅 ${x}</span>`).join("")
+    : `<span style="color:var(--sub);font-size:13px">記録を重ねてバッジを集めよう！</span>`;
+}
+function rivalFeed(){ // 自分以外の活動を新しい順に
+  return ROOT.feed.filter(f=>f.name!==ROOT.current).slice().reverse();
+}
+function renderRivals(){
+  const el=document.getElementById("dashRivals");if(!el)return;
+  const fe=rivalFeed().slice(0,8);
+  el.innerHTML = fe.length
+    ? fe.map(f=>`<div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid #1b1b1f">
+        <div style="width:30px;height:30px;border-radius:50%;background:var(--goldgrad);display:grid;place-items:center;color:#1a1408;font-weight:800;flex-shrink:0">${(f.name[0]||'?').toUpperCase()}</div>
+        <div style="font-size:12.5px"><b>${f.name}</b> さんがジムで頑張ったよ！🔥<div style="font-size:10.5px;color:var(--sub)">${f.date}　負けてられへんで！💪</div></div>
+      </div>`).join("")
+    : `<div style="color:var(--sub);font-size:12.5px">まだライバルの記録はありません。友達を👤から追加して一緒に競おう！</div>`;
+}
+function notifyRivals(){ // ログイン時：前回ログイン以降のライバル活動を通知
+  const since=S.lastSeen||0;
+  const fresh=ROOT.feed.filter(f=>f.name!==ROOT.current && f.ts>since);
+  S.lastSeen=Date.now();save();
+  if(fresh.length){
+    const names=[...new Set(fresh.map(f=>f.name))];
+    const who=names.length<=2?names.join("・"):names[0]+"さんたち";
+    setTimeout(()=>toast(`🔥 ライバルの ${who} が頑張ってるよ！あなたも続け！💪`),700);
+  }
+}
+/* ===== ライバル：応援(エール)・腕相撲バトル・強化の飴 ===== */
+function rivals(){return userList().filter(n=>n!==ROOT.current);}
+function dayDiff(a,b){return Math.round((new Date(a)-new Date(b))/86400000);} // a-b 日数
+function addDays(str,n){const d=new Date(str);d.setDate(d.getDate()+n);return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");}
+function canYell(){return S.lastYellDate!==todayStr();} // 1日1人まで
+function battleCooldown(){return S.lastBattleDate?Math.max(0,3-dayDiff(todayStr(),S.lastBattleDate)):0;} // 残り日数
+function canBattle(){return battleCooldown()<=0;}
+function sendYell(name){
+  if(!canYell()){toast("📣 応援は1日1人までやで（また明日！）");return;}
+  ROOT.events.push({id:"e"+Date.now(),type:"yell",from:ROOT.current,to:name,ts:Date.now(),date:todayStr(),processed:false});
+  S.lastYellDate=todayStr();save();
+  toast(`📣 ${name} にエールを送った！強化の飴をプレゼント🍬`);
+  renderArena();renderRivals();
+}
+function startBattle(name){
+  if(!canBattle()){toast(`💪 腕相撲はあと ${battleCooldown()}日 待ってな（3日に1回）`);return;}
+  const opp=ROOT.users[name];if(!opp){return;}
+  const my=powerScore(S), ov=powerScore(opp);
+  const myWinProb = my>ov?0.70 : my<ov?0.30 : 0.50; // 合計値が高い方の勝率70%
+  const iWin = Math.random()<myWinProb;
+  S.lastBattleDate=todayStr();
+  // 相手向けイベント（相手がログインした時に処理）
+  ROOT.events.push({id:"b"+Date.now(),type:"battle",from:ROOT.current,to:name,ts:Date.now(),date:todayStr(),recipientWon:!iWin,processed:false});
+  if(!iWin){ // 自分が負け → 翌日タンパク質2倍ペナルティ
+    S.proteinPenalty=addDays(todayStr(),1);
+  }
+  save();
+  showBattleResult(name,iWin,my,ov,myWinProb);
+  renderArena();renderRivals();renderProtein();
+}
+function applyBattlePenalty(battleDate){ // 受信側が負けた時：翌日(過ぎていれば今日)を2倍に
+  let pd=addDays(battleDate,1); if(dayDiff(todayStr(),pd)>0)pd=todayStr();
+  S.proteinPenalty=pd;
+}
+function processEvents(){ // ログイン時：自分宛ての応援・バトル結果を処理
+  const me=ROOT.current; const msgs=[]; let changed=false;
+  ROOT.events.forEach(ev=>{
+    if(ev.to!==me||ev.processed)return;
+    ev.processed=true; changed=true;
+    if(ev.type==="yell"){S.candy=(S.candy||0)+1;msgs.push(`📣 ${ev.from} さんがエールを送ってくれた！強化の飴を1個GET🍬`);}
+    else if(ev.type==="battle"){
+      if(ev.recipientWon){msgs.push(`🏆 ${ev.from} との腕相撲に勝った！強い！💪`);}
+      else{applyBattlePenalty(ev.date);msgs.push(`💥 ${ev.from} との腕相撲に負けた…${S.proteinPenalty}はタンパク質2倍やで！`);}
+    }
+  });
+  if(changed)save();
+  msgs.forEach((m,i)=>setTimeout(()=>toast(m),900+i*1600));
+}
+function showBattleResult(name,iWin,my,ov,prob){
+  const box=document.getElementById("battleModalBody");
+  box.innerHTML=`
+    <div style="text-align:center">
+      <div style="font-size:40px">${iWin?"🏆":"💥"}</div>
+      <div style="font-size:22px;font-weight:800;color:${iWin?'var(--gold2)':'var(--red)'};margin:6px 0">${iWin?"勝利！":"敗北…"}</div>
+      <p style="font-size:13px;color:var(--sub)">${ROOT.current}（パワー${my}）vs ${name}（パワー${ov}）<br>勝率 ${Math.round(prob*100)}% の勝負！</p>
+      <div style="margin-top:14px;font-size:14px;font-weight:700">${iWin
+        ? `${name} に勝った！この調子で鍛えていこ💪`
+        : `<span style="color:var(--red)">明日はタンパク質2倍（${Math.round((S.bw||72)*1.6*2)}g）取らないと達成にならへんで！</span>`}</div>
+    </div>`;
+  document.getElementById("battleModal").classList.add("show");
+}
+function renderArena(){
+  const el=document.getElementById("arenaList");if(!el)return;
+  // ヘッダー情報
+  const info=document.getElementById("arenaInfo");
+  if(info)info.innerHTML=`
+    <div style="display:flex;gap:10px;flex-wrap:wrap">
+      <span class="badge" style="background:rgba(212,175,55,.13);color:var(--gold2)">🍬 強化の飴 × ${S.candy||0}</span>
+      <span class="badge" style="background:rgba(212,175,55,.13);color:var(--gold2)">⚡ あなたのパワー ${powerScore(S)}</span>
+      <span class="badge" style="background:${canYell()?'rgba(95,208,138,.13)':'rgba(224,106,95,.13)'};color:${canYell()?'var(--green)':'var(--red)'}">📣 応援 ${canYell()?'本日OK':'本日済み'}</span>
+      <span class="badge" style="background:${canBattle()?'rgba(95,208,138,.13)':'rgba(224,106,95,.13)'};color:${canBattle()?'var(--green)':'var(--red)'}">💪 腕相撲 ${canBattle()?'挑戦可':'あと'+battleCooldown()+'日'}</span>
+    </div>
+    ${S.proteinPenalty&&dayDiff(todayStr(),S.proteinPenalty)<=0?`<div style="margin-top:10px;font-size:12px;color:var(--red);font-weight:700">⚔️ 敗北ペナルティ：${S.proteinPenalty} はタンパク質2倍が必要です</div>`:""}`;
+  const rs=rivals();
+  el.innerHTML = rs.length
+    ? rs.map(n=>{const u=ROOT.users[n];const pw=powerScore(u);
+      return `<div style="display:flex;align-items:center;gap:12px;padding:13px;border:1px solid var(--line);border-radius:12px;background:#0e0e11;margin-bottom:10px">
+        <div style="width:40px;height:40px;border-radius:50%;background:var(--goldgrad);display:grid;place-items:center;color:#1a1408;font-weight:800;flex-shrink:0">${(n[0]||'?').toUpperCase()}</div>
+        <div style="flex:1;min-width:0">
+          <b style="font-size:14px">${n}</b> <span style="font-size:11px;color:var(--sub)">${u.gender==='female'?'♀':'♂'}</span>
+          <div style="font-size:11px;color:var(--sub)">⚡パワー ${pw} ・ ${new Set(u.trainings.map(t=>t.date)).size}回トレ</div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:6px">
+          <button class="btn ${canYell()?'btn-gold':'btn-ghost'}" data-yell="${n}" style="padding:7px 12px;font-size:12px;white-space:nowrap">📣 応援</button>
+          <button class="btn ${canBattle()?'btn-gold':'btn-ghost'}" data-battle="${n}" style="padding:7px 12px;font-size:12px;white-space:nowrap">💪 腕相撲</button>
+        </div>
+      </div>`;}).join("")
+    : `<div class="empty">ライバルがいません。右上の👤から友達を追加して、応援やバトルで競い合おう！</div>`;
+}
+let fbType="要望";
+function renderFeedback(){
+  const el=document.getElementById("fbList");if(!el)return;
+  const list=ROOT.feedback.slice().reverse();
+  el.innerHTML = list.length
+    ? list.map(f=>`<div style="padding:10px 0;border-bottom:1px solid #1b1b1f">
+        <div style="font-size:11px;color:var(--sub)"><span class="tag">${f.type}</span> ${f.user}・${f.date}</div>
+        <div style="font-size:13px;margin-top:4px">${f.text.replace(/</g,"&lt;")}</div></div>`).join("")
+    : `<div class="empty">まだ送信された要望はありません。</div>`;
+}
+function feedbackAsText(){
+  return "【IRON LOG 改善フォーム 報告】\n"+ROOT.feedback.map((f,i)=>
+    `${i+1}. [${f.type}] ${f.user}（${f.date}）\n   ${f.text}`).join("\n");
+}
+
+function renderAll(){
+  renderStats();renderParts();renderRecent();renderHistory();renderRecord();renderProtein();renderGym();renderBadges();renderMenu();renderRivals();renderFeedback();renderArena();
+  refreshAllChars();
+  // page bubbles
+  bubble("charPageBubble","ええ筋肉になってきたで！💪");
+  bubble("proteinBubble","タンパク質はからだの材料やで！🥩");
+}
+
+/* =================== ACTIONS =================== */
+function recordActivity(){ // ライバル通知用：1日1回「ジムに来た」イベントを共有フィードに記録
+  if(!ROOT.current)return;
+  const t=todayStr();
+  if(ROOT.feed.some(f=>f.name===ROOT.current && f.date===t))return; // 今日はもう記録済み
+  ROOT.feed.push({name:ROOT.current,gender:S.gender,date:t,ts:Date.now()});
+  if(ROOT.feed.length>200)ROOT.feed=ROOT.feed.slice(-200);
+}
+function addTraining(p,ex,w,r,s,memo,boost){
+  if(!ex){toast("この部位はこのジムで実施可能な種目がありません");return false;}
+  S.trainings.push({id:Date.now()+""+Math.random().toString(36).slice(2,5),date:todayStr(),p,ex,w:+w,r:+r,s:+s,memo:memo||""});
+  if(boost && (S.candy||0)>0){ // 強化の飴：このトレーニングのレベルを2倍（+1日分ボーナス）
+    S.candy--; S.bonus[p]=(S.bonus[p]||0)+1;
+    setTimeout(()=>toast("🍬 強化の飴使用！この部位のレベルが2倍効果でアップ⚡"),300);
+  }
+  recordActivity();
+  save();return true;
+}
+function toggleProtein(k){
+  const i=S.protein.indexOf(k);
+  if(i<0 && k===S.proteinPenalty){ // 敗北ペナルティ日は2倍飲んだ確認が必要
+    const need=Math.round((S.bw||72)*1.6*2);
+    if(!confirm(`⚔️ 腕相撲の敗北ペナルティ日です。\n今日は目標の2倍（${need}g）のタンパク質を取りましたか？\n\nOKで達成として記録します。`)){
+      toast("⚔️ 2倍飲んだら達成できるで！がんばれ💪");return;}
+  }
+  if(i>=0)S.protein.splice(i,1); else S.protein.push(k);
+  save();renderProtein();renderParts();renderBadges();renderArena();refreshAllChars();
+  if(i<0){toast("🥩 タンパク質 達成！からだが育つで！");bubble("proteinBubble","ナイス補給！からだが大きくなるで！");}
+}
+
+/* =================== EVENTS =================== */
+// nav (sidebar + bottom tab bar)
+["nav","bottomNav"].forEach(id=>{
+  const el=document.getElementById(id);if(!el)return;
+  el.addEventListener("click",e=>{const a=e.target.closest("a[data-view]");if(!a)return;showView(a.dataset.view);});
+});
+function showView(v){
+  document.querySelectorAll("#nav a,#bottomNav a").forEach(a=>a.classList.toggle("active",a.dataset.view===v));
+  document.querySelectorAll(".view").forEach(s=>s.classList.toggle("active",s.id==="view-"+v));
+  if(v==="character"){bubble("charPageBubble","ええ筋肉や！もっと育てよ！💪");}
+  refreshAllChars();window.scrollTo(0,0);
+}
+// layout mode (mobile / pc)
+function applyMode(m){
+  document.body.classList.toggle("mode-mobile",m==="mobile");
+  document.body.classList.toggle("mode-pc",m==="pc");
+  document.querySelectorAll("#modeSwitch button").forEach(b=>b.classList.toggle("on",b.dataset.mode===m));
+  S.mode=m;save();refreshAllChars();
+}
+document.getElementById("modeSwitch").addEventListener("click",e=>{
+  const b=e.target.closest("[data-mode]");if(b)applyMode(b.dataset.mode);});
+document.querySelectorAll("[data-jump]").forEach(el=>el.onclick=()=>showView(el.dataset.jump));
+
+// record part chips
+document.getElementById("partChips").addEventListener("click",e=>{
+  const c=e.target.closest("[data-rp]");if(!c)return;recPart=c.dataset.rp;renderRecord();});
+// custom exercise add / delete (record view)
+document.getElementById("customExAdd").onclick=()=>{
+  const inp=document.getElementById("customExName");
+  if(addCustomExercise(inp.value,recPart)){inp.value="";renderRecord();
+    const sel=document.getElementById("exSelect");if(sel)sel.value=inp.value;toast("⭐ オリジナル種目を追加しました");}
+};
+document.getElementById("customExName").addEventListener("keydown",e=>{if(e.key==="Enter")document.getElementById("customExAdd").click();});
+document.getElementById("customExList").addEventListener("click",e=>{
+  const d=e.target.closest("[data-cxdel]");if(!d)return;
+  S.customExercises=S.customExercises.filter(x=>x.id!==d.dataset.cxdel);save();renderRecord();toast("種目を削除しました");});
+document.getElementById("saveRec").onclick=()=>{
+  const ex=document.getElementById("exSelect").value;
+  const boost=document.getElementById("useCandy").checked;
+  if(addTraining(recPart,ex,document.getElementById("inW").value,document.getElementById("inR").value,
+     document.getElementById("inS").value,document.getElementById("inMemo").value,boost)){
+    document.getElementById("inMemo").value="";document.getElementById("useCandy").checked=false;
+    const msg=rand(CHEER);bubble("recBubble",msg);toast("💪 記録完了！"+msg);
+    renderAll();
+  }
+};
+
+// protein
+document.getElementById("bw").addEventListener("input",e=>{S.bw=+e.target.value||0;save();renderProtein();});
+document.getElementById("proteinToday").onclick=()=>toggleProtein(todayStr());
+document.getElementById("proteinCal").addEventListener("click",e=>{
+  const c=e.target.closest("[data-pd]");if(c)toggleProtein(c.dataset.pd);});
+
+// history delete
+document.getElementById("historyTable").addEventListener("click",e=>{
+  const d=e.target.closest("[data-del]");if(!d)return;
+  S.trainings=S.trainings.filter(t=>t.id!==d.dataset.del);save();renderAll();toast("記録を削除しました");});
+
+// gym
+document.getElementById("gymSearch").addEventListener("input",renderGym);
+document.getElementById("gymList").addEventListener("click",e=>{
+  const c=e.target.closest("[data-gym]");if(!c)return;
+  S.gym=c.dataset.gym;save();renderGym();renderRecord();renderModalChips();
+  toast("📍 "+currentGym().name+" に設定！種目を切り替えました");});
+document.getElementById("saveCustomGym").onclick=()=>{
+  const name=document.getElementById("customGymName").value.trim();
+  if(!name){toast("ジム名を入力してください");return;}
+  const eq=["bodyweight",...[...document.querySelectorAll("#equipPicker .eqchk input:checked")].map(i=>i.value)];
+  const id="c"+Date.now();
+  S.customGyms.push({id,name,desc:"カスタム登録ジム",eq:[...new Set(eq)]});
+  S.gym=id;save();
+  document.getElementById("customGymName").value="";
+  renderGym();renderRecord();renderModalChips();
+  toast("✅ "+name+" を登録して使用中！");
+};
+
+// set menu
+document.getElementById("menuPartChips").addEventListener("click",e=>{
+  const c=e.target.closest("[data-menup]");if(!c)return;menuPart=c.dataset.menup;renderMenu();});
+// add a brand-new exercise to THIS part, then auto-select it in the dropdown
+document.getElementById("menuCustomAdd").onclick=()=>{
+  const inp=document.getElementById("menuCustomName");const name=inp.value.trim();
+  if(addCustomExercise(name,menuPart)){inp.value="";renderMenu();
+    const sel=document.getElementById("menuExSelect");if(sel)sel.value=name;
+    toast("⭐ "+partName(menuPart)+"に種目を追加しました");}
+};
+document.getElementById("menuCustomName").addEventListener("keydown",e=>{if(e.key==="Enter")document.getElementById("menuCustomAdd").click();});
+document.getElementById("menuCustomList").addEventListener("click",e=>{
+  const d=e.target.closest("[data-mcxdel]");if(!d)return;
+  S.customExercises=S.customExercises.filter(x=>x.id!==d.dataset.mcxdel);save();renderMenu();renderRecord();toast("種目を削除しました");});
+document.getElementById("menuAddItem").onclick=()=>{
+  const ex=document.getElementById("menuExSelect").value;
+  if(!ex){toast("このジムで実施可能な種目がありません");return;}
+  menuDraft.push({p:menuPart,ex,w:+document.getElementById("menuW").value,r:+document.getElementById("menuR").value,s:+document.getElementById("menuS").value});
+  renderMenu();toast("種目を追加しました");
+};
+document.getElementById("menuDraftList").addEventListener("click",e=>{
+  const d=e.target.closest("[data-draftdel]");if(!d)return;menuDraft.splice(+d.dataset.draftdel,1);renderMenu();});
+document.getElementById("menuSave").onclick=()=>{
+  const name=document.getElementById("menuName").value.trim();
+  if(!name){toast("メニュー名を入力してください");return;}
+  if(!menuDraft.length){toast("種目を1つ以上追加してください");return;}
+  S.menus.push({id:"m"+Date.now(),name,items:menuDraft.slice()});
+  save();menuDraft=[];document.getElementById("menuName").value="";
+  renderMenu();renderRecord();toast("💾 メニュー「"+name+"」を保存しました");
+};
+document.getElementById("menuList").addEventListener("click",e=>{
+  const log=e.target.closest("[data-menulog]");const del=e.target.closest("[data-menudel]");
+  if(log)logMenu(log.dataset.menulog);
+  if(del){S.menus=S.menus.filter(m=>m.id!==del.dataset.menudel);save();renderMenu();renderRecord();toast("メニューを削除しました");}
+});
+document.getElementById("quickLog").onclick=()=>{
+  const id=document.getElementById("quickMenu").value;
+  if(!id){toast("先にセットメニューを登録してください");return;}
+  logMenu(id);
+};
+
+// feedback form
+document.getElementById("fbTypeChips").addEventListener("click",e=>{
+  const c=e.target.closest("[data-fbtype]");if(!c)return;fbType=c.dataset.fbtype;
+  document.querySelectorAll("#fbTypeChips .chip").forEach(x=>x.classList.toggle("on",x.dataset.fbtype===fbType));});
+document.getElementById("fbSend").onclick=()=>{
+  const txt=document.getElementById("fbText").value.trim();
+  if(!txt){toast("内容を入力してください");return;}
+  ROOT.feedback.push({user:ROOT.current||"ゲスト",type:fbType,text:txt,date:todayStr(),ts:Date.now()});
+  save();document.getElementById("fbText").value="";renderFeedback();
+  toast("📨 ありがとう！要望を受け付けました💛");
+};
+document.getElementById("fbCopy").onclick=async()=>{
+  if(!ROOT.feedback.length){toast("まだ要望がありません");return;}
+  const txt=feedbackAsText();
+  try{await navigator.clipboard.writeText(txt);toast("📋 コピーしました！Claudeに貼り付けて報告してください");}
+  catch(e){const ta=document.createElement("textarea");ta.value=txt;document.body.appendChild(ta);ta.select();document.execCommand("copy");ta.remove();toast("📋 コピーしました！Claudeに貼り付けてください");}
+};
+
+// arena (rivals): 応援 / 腕相撲
+document.getElementById("arenaList").addEventListener("click",e=>{
+  const y=e.target.closest("[data-yell]");const b=e.target.closest("[data-battle]");
+  if(y)sendYell(y.dataset.yell);
+  if(b)startBattle(b.dataset.battle);
+});
+const battleModal=document.getElementById("battleModal");
+battleModal.addEventListener("click",e=>{if(e.target===battleModal||e.target.dataset.bclose!==undefined)battleModal.classList.remove("show");});
+document.getElementById("battleOk").onclick=()=>battleModal.classList.remove("show");
+
+// visit modal
+const vm=document.getElementById("visitModal");
+document.getElementById("visitBtn").onclick=()=>{
+  renderModalChips();mountChar("charMountModal");
+  document.getElementById("welcomeMsg").textContent=rand(WELCOME);
+  vm.classList.add("show");
+};
+vm.addEventListener("click",e=>{if(e.target===vm||e.target.dataset.close!==undefined)vm.classList.remove("show");});
+document.getElementById("mPartChips").addEventListener("click",e=>{
+  const c=e.target.closest("[data-mp]");if(!c)return;mPart=c.dataset.mp;renderModalChips();});
+document.getElementById("mMenuLog").onclick=()=>{
+  const id=document.getElementById("mMenu").value;
+  if(!id){toast("メニューを選んでください（未登録なら「セットメニュー」で作成）");return;}
+  logMenu(id);
+  document.getElementById("welcomeMsg").textContent=rand(CHEER);
+  setTimeout(()=>{vm.classList.remove("show");showView("character");},900);
+};
+document.getElementById("mSave").onclick=()=>{
+  const ex=document.getElementById("mEx").value;
+  const boost=document.getElementById("mUseCandy").checked;
+  if(addTraining(mPart,ex,document.getElementById("mW").value,document.getElementById("mR").value,document.getElementById("mS").value,"",boost)){
+    const before=document.getElementById("welcomeMsg");
+    const msg=rand(CHEER);before.textContent=msg;
+    toast("💪 "+msg);
+    renderAll();
+    // level up check feedback
+    setTimeout(()=>{vm.classList.remove("show");showView("character");},900);
+  }
+};
+
+/* =================== LOGIN / PROFILES =================== */
+const loginScreen=document.getElementById("loginScreen");
+let pickGender="male";
+function updateProfileUI(){
+  const name=ROOT.current||"";
+  document.getElementById("greetName").textContent=name;
+  document.getElementById("userName").textContent=name;
+  document.getElementById("userAv").textContent=(name[0]||"?").toUpperCase();
+  document.getElementById("profileBtnName").textContent=name||"ユーザー";
+  document.getElementById("subGreet").textContent = S.gender==="female"
+    ? "今日も最高のトレーニングを。あなたなら絶対できる！💪"
+    : "今日も最高のトレーニングを。筋肉は裏切らへんで！";
+}
+function renderLogin(){
+  // gender preview mini characters
+  document.getElementById("prevMale").innerHTML=buildSVG("male");
+  document.getElementById("prevFemale").innerHTML=buildSVG("female");
+  document.querySelectorAll("#prevMale svg,#prevFemale svg").forEach(s=>{s.style.maxWidth="70px";});
+  // profile cards
+  const names=userList();
+  document.getElementById("profileCards").innerHTML = names.length
+    ? `<div style="font-size:12px;color:var(--sub);text-align:left;font-weight:700;margin-bottom:2px">ログインする人を選ぶ</div>`+
+      names.map(n=>{const u=ROOT.users[n];return `<div class="pcard" data-login="${n}">
+        <div class="pav">${(n[0]||"?").toUpperCase()}</div>
+        <div><b>${n}</b><small>${u.gender==="female"?"♀ 女性":"♂ 男性"} ・ ${new Set(u.trainings.map(t=>t.date)).size}回トレーニング</small></div>
+        <span class="pdel" data-pdel="${n}">削除</span>
+      </div>`;}).join("")
+    : "";
+  document.querySelectorAll("#genderPick .gbtn").forEach(b=>b.classList.toggle("on",b.dataset.gender===pickGender));
+}
+function showLogin(){renderLogin();loginScreen.classList.add("show");}
+function bootUser(){
+  S=ROOT.users[ROOT.current];
+  loginScreen.classList.remove("show");
+  applyMode(S.mode||"mobile");
+  updateProfileUI();
+  renderAll();
+  bubble("dashBubble", S.gender==="female"?"今日も一緒にがんばろ！💛":"今日も鍛えていこか！💪");
+  processEvents();
+  notifyRivals();
+}
+function loginUser(name){ROOT.current=name;S=ROOT.users[name];save();bootUser();}
+document.getElementById("genderPick").addEventListener("click",e=>{
+  const b=e.target.closest("[data-gender]");if(!b)return;pickGender=b.dataset.gender;
+  document.querySelectorAll("#genderPick .gbtn").forEach(x=>x.classList.toggle("on",x.dataset.gender===pickGender));
+});
+document.getElementById("loginStart").onclick=()=>{
+  const name=document.getElementById("loginName").value.trim();
+  if(!name){toast("名前を入力してください");return;}
+  const g=document.querySelector("#genderPick .gbtn.on")?.dataset.gender || pickGender || "male";
+  if(ROOT.users[name]){ROOT.users[name].gender=g;loginUser(name);return;} // 既存名ならログイン
+  ROOT.users[name]=blankUser(g);
+  document.getElementById("loginName").value="";
+  loginUser(name);
+};
+document.getElementById("profileCards").addEventListener("click",e=>{
+  const del=e.target.closest("[data-pdel]");const log=e.target.closest("[data-login]");
+  if(del){e.stopPropagation();const n=del.dataset.pdel;
+    if(confirm(n+" さんのデータを削除しますか？")){delete ROOT.users[n];if(ROOT.current===n)ROOT.current=null;save();renderLogin();}return;}
+  if(log)loginUser(log.dataset.login);
+});
+function openSwitch(){ // ユーザー切替（ログイン画面を再表示）
+  pickGender = S.gender||"male";
+  showLogin();
+}
+loginScreen.addEventListener("click",e=>{ // ログイン済みなら背景タップで閉じる
+  if(e.target===loginScreen && ROOT.current && ROOT.users[ROOT.current]) loginScreen.classList.remove("show");
+});
+document.getElementById("profileBtn").onclick=openSwitch;
+document.getElementById("userBox").onclick=openSwitch;
+
+// init
+document.getElementById("todayLabel").textContent="📅 "+new Date().toLocaleDateString("ja-JP",{year:"numeric",month:"long",day:"numeric",weekday:"short"});
+if(ROOT.current && ROOT.users[ROOT.current]){
+  bootUser();
+}else{
+  applyMode("mobile");        // 背景レイアウトだけ整える
+  showLogin();                // 最初は名前・性別を選んでログイン
+}
+</script>
+</body>
+</html>
