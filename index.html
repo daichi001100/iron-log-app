@@ -777,7 +777,7 @@ const GYMS=[
 const LS="ironlog_v2", LS_OLD="ironlog_v1";
 function blankUser(gender){return {gender:gender||"male",trainings:[],protein:[],bw:gender==="female"?55:72,gym:"full",customGyms:[],menus:[],customExercises:[],mode:"mobile",lastSeen:Date.now(),candy:0,bonus:{},lastYellDate:null,lastBattleDate:null,proteinPenalty:null,lastEventTs:0};}
 function normUser(u,gender){u.gender=u.gender||gender||"male";if(!u.menus)u.menus=[];if(!u.customGyms)u.customGyms=[];if(!u.customExercises)u.customExercises=[];if(!u.mode)u.mode="mobile";if(u.bw==null)u.bw=72;if(!u.trainings)u.trainings=[];if(!u.protein)u.protein=[];if(u.lastSeen==null)u.lastSeen=Date.now();if(u.candy==null)u.candy=0;if(!u.bonus)u.bonus={};if(u.lastYellDate===undefined)u.lastYellDate=null;if(u.lastBattleDate===undefined)u.lastBattleDate=null;if(u.proteinPenalty===undefined)u.proteinPenalty=null;if(u.lastEventTs==null)u.lastEventTs=0;return u;}
-function normRoot(d){if(!d.feed)d.feed=[];if(!d.feedback)d.feedback=[];if(!d.events)d.events=[];return d;}
+function normRoot(d){if(!d.feed)d.feed=[];if(!d.feedback)d.feedback=[];if(!d.events)d.events=[];if(!d.importedRivals)d.importedRivals=[];return d;}
 function loadRoot(){
   try{const d=JSON.parse(localStorage.getItem(LS));if(d&&d.users){Object.keys(d.users).forEach(k=>normUser(d.users[k]));return normRoot(d);}}catch(e){}
   // v1(単一ユーザー)からの移行：既存データを「Daichi」として引き継ぐ
@@ -791,6 +791,30 @@ let S=ROOT.current?ROOT.users[ROOT.current]:blankUser("male"); // ログイン�
 function save(){if(ROOT.current)ROOT.users[ROOT.current]=S;localStorage.setItem(LS,JSON.stringify(ROOT));}
 function userList(){return Object.keys(ROOT.users);}
 const todayStr=()=>{const d=new Date();return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");};
+
+/* =================== RIVAL SHARE CODE =================== */
+function rivalCode(){
+  if(!ROOT.current)return"";
+  const parts={};PARTS.forEach(p=>parts[p.key]=partDays(p.key));
+  const data={n:ROOT.current,g:S.gender,p:parts,pr:proteinDays(),t:S.trainings.length,at:Date.now()};
+  return btoa(encodeURIComponent(JSON.stringify(data)));
+}
+function rivalShareURL(){return location.origin+location.pathname+'#rival='+rivalCode();}
+function parseRivalCode(code){try{return JSON.parse(decodeURIComponent(atob(code)));}catch(e){return null;}}
+function importRival(code){
+  const d=parseRivalCode(code);
+  if(!d||!d.n){toast("❌ リンクが無効です");return false;}
+  if(d.n===ROOT.current){toast("自分自身はライバルに追加できません");return false;}
+  if(ROOT.users[d.n]){toast(d.n+"さんはすでにこの端末にいます");return false;}
+  if(!ROOT.importedRivals)ROOT.importedRivals=[];
+  const idx=ROOT.importedRivals.findIndex(r=>r.n===d.n);
+  if(idx>=0){ROOT.importedRivals[idx]=d;toast("🔄 "+d.n+"さんのデータを更新しました！");}
+  else{ROOT.importedRivals.push(d);toast("✅ "+d.n+"さんをライバルに追加！💪");}
+  save();return true;
+}
+function powerScoreImported(imp){
+  return levelFromDays(imp.pr||0)+PARTS.reduce((s,p)=>s+levelFromDays((imp.p||{})[p.key]||0),0);
+}
 
 /* =================== HELPERS =================== */
 function currentGym(){
@@ -1234,6 +1258,16 @@ function startBattle(name){
   showBattleResult(name,iWin,my,ov,myWinProb);
   renderArena();renderRivals();renderProtein();
 }
+function startBattleImported(name){
+  if(!canBattle()){toast(`💪 腕相撲はあと ${battleCooldown()}日 待ってな（3日に1回）`);return;}
+  const imp=(ROOT.importedRivals||[]).find(r=>r.n===name);if(!imp)return;
+  const my=powerScore(S),ov=powerScoreImported(imp);
+  const myWinProb=my>ov?0.70:my<ov?0.30:0.50;
+  const iWin=Math.random()<myWinProb;
+  S.lastBattleDate=todayStr();
+  if(!iWin)S.proteinPenalty=addDays(todayStr(),1);
+  save();showBattleResult(name,iWin,my,ov,myWinProb);renderArena();renderProtein();
+}
 function applyBattlePenalty(battleDate){ // 受信側が負けた時：翌日(過ぎていれば今日)を2倍に
   let pd=addDays(battleDate,1); if(dayDiff(todayStr(),pd)>0)pd=todayStr();
   S.proteinPenalty=pd;
@@ -1267,31 +1301,66 @@ function showBattleResult(name,iWin,my,ov,prob){
 }
 function renderArena(){
   const el=document.getElementById("arenaList");if(!el)return;
-  // ヘッダー情報
   const info=document.getElementById("arenaInfo");
-  if(info)info.innerHTML=`
-    <div style="display:flex;gap:10px;flex-wrap:wrap">
-      <span class="badge" style="background:rgba(212,175,55,.13);color:var(--gold2)">🍬 強化の飴 × ${S.candy||0}</span>
-      <span class="badge" style="background:rgba(212,175,55,.13);color:var(--gold2)">⚡ あなたのパワー ${powerScore(S)}</span>
-      <span class="badge" style="background:${canYell()?'rgba(95,208,138,.13)':'rgba(224,106,95,.13)'};color:${canYell()?'var(--green)':'var(--red)'}">📣 応援 ${canYell()?'本日OK':'本日済み'}</span>
-      <span class="badge" style="background:${canBattle()?'rgba(95,208,138,.13)':'rgba(224,106,95,.13)'};color:${canBattle()?'var(--green)':'var(--red)'}">💪 腕相撲 ${canBattle()?'挑戦可':'あと'+battleCooldown()+'日'}</span>
-    </div>
-    ${S.proteinPenalty&&dayDiff(todayStr(),S.proteinPenalty)<=0?`<div style="margin-top:10px;font-size:12px;color:var(--red);font-weight:700">⚔️ 敗北ペナルティ：${S.proteinPenalty} はタンパク質2倍が必要です</div>`:""}`;
-  const rs=rivals();
-  el.innerHTML = rs.length
-    ? rs.map(n=>{const u=ROOT.users[n];const pw=powerScore(u);
-      return `<div style="display:flex;align-items:center;gap:12px;padding:13px;border:1px solid var(--line);border-radius:12px;background:#0e0e11;margin-bottom:10px">
-        <div style="width:40px;height:40px;border-radius:50%;background:var(--goldgrad);display:grid;place-items:center;color:#1a1408;font-weight:800;flex-shrink:0">${(n[0]||'?').toUpperCase()}</div>
-        <div style="flex:1;min-width:0">
-          <b style="font-size:14px">${n}</b> <span style="font-size:11px;color:var(--sub)">${u.gender==='female'?'♀':'♂'}</span>
-          <div style="font-size:11px;color:var(--sub)">⚡パワー ${pw} ・ ${new Set(u.trainings.map(t=>t.date)).size}回トレ</div>
-        </div>
-        <div style="display:flex;flex-direction:column;gap:6px">
-          <button class="btn ${canYell()?'btn-gold':'btn-ghost'}" data-yell="${n}" style="padding:7px 12px;font-size:12px;white-space:nowrap">📣 応援</button>
-          <button class="btn ${canBattle()?'btn-gold':'btn-ghost'}" data-battle="${n}" style="padding:7px 12px;font-size:12px;white-space:nowrap">💪 腕相撲</button>
-        </div>
-      </div>`;}).join("")
-    : `<div class="empty">ライバルがいません。右上の👤から友達を追加して、応援やバトルで競い合おう！</div>`;
+  const penalty=S.proteinPenalty&&dayDiff(todayStr(),S.proteinPenalty)<=0;
+  if(info)info.innerHTML=
+    '<div style="display:flex;gap:10px;flex-wrap:wrap">'
+    +'<span class="badge" style="background:rgba(212,175,55,.13);color:var(--gold2)">🍬 強化の飴 × '+(S.candy||0)+'</span>'
+    +'<span class="badge" style="background:rgba(212,175,55,.13);color:var(--gold2)">⚡ あなたのパワー '+powerScore(S)+'</span>'
+    +'<span class="badge" style="background:'+(canYell()?'rgba(95,208,138,.13)':'rgba(224,106,95,.13)')+';color:'+(canYell()?'var(--green)':'var(--red)')+'">📣 応援 '+(canYell()?'本日OK':'本日済み')+'</span>'
+    +'<span class="badge" style="background:'+(canBattle()?'rgba(95,208,138,.13)':'rgba(224,106,95,.13)')+';color:'+(canBattle()?'var(--green)':'var(--red)')+'">💪 腕相撲 '+(canBattle()?'挑戦可':'あと'+battleCooldown()+'日')+'</span>'
+    +'</div>'
+    +(penalty?'<div style="margin-top:10px;font-size:12px;color:var(--red);font-weight:700">⚔️ 敗北ペナルティ：'+S.proteinPenalty+' はタンパク質2倍が必要です</div>':"")
+    +'<div style="margin-top:14px;border-top:1px solid var(--line);padding-top:12px">'
+    +'<p style="font-size:12px;font-weight:700;color:var(--sub);margin-bottom:8px">🔗 友達をライバルに招待（別デバイス・別ブラウザもOK！）</p>'
+    +'<div style="display:flex;gap:8px;margin-bottom:8px"><button class="btn btn-gold" id="copyRivalLink" style="padding:9px 14px;font-size:13px">🔗 招待リンクをコピー</button></div>'
+    +'<div style="display:flex;gap:8px"><input type="text" id="rivalCodeInput" placeholder="友達の招待リンクをここに貼り付けて追加" style="flex:1;background:#0e0e11;border:1px solid var(--line);color:var(--txt);padding:9px 13px;border-radius:10px;font-size:13px;font-family:inherit">'
+    +'<button class="btn btn-ghost" id="addRivalBtn" style="white-space:nowrap;padding:9px 14px;font-size:13px">＋ 追加</button></div>'
+    +'</div>';
+
+  const localNames=userList().filter(n=>n!==ROOT.current);
+  const imported=(ROOT.importedRivals||[]).filter(r=>!ROOT.users[r.n]);
+  const localHTML=localNames.map(n=>{
+    const u=ROOT.users[n];const pw=powerScore(u);
+    return '<div style="display:flex;align-items:center;gap:12px;padding:13px;border:1px solid var(--line);border-radius:12px;background:#0e0e11;margin-bottom:10px">'
+      +'<div style="width:40px;height:40px;border-radius:50%;background:var(--goldgrad);display:grid;place-items:center;color:#1a1408;font-weight:800;flex-shrink:0">'+(n[0]||'?').toUpperCase()+'</div>'
+      +'<div style="flex:1;min-width:0"><b style="font-size:14px">'+n+'</b> <span style="font-size:11px;color:var(--sub)">'+(u.gender==='female'?'♀':'♂')+'</span>'
+      +' <span class="badge" style="background:rgba(95,208,138,.13);color:var(--green);font-size:10px">この端末</span>'
+      +'<div style="font-size:11px;color:var(--sub)">⚡パワー '+pw+' ・ '+new Set(u.trainings.map(t=>t.date)).size+'回トレ</div></div>'
+      +'<div style="display:flex;flex-direction:column;gap:6px">'
+      +'<button class="btn '+(canYell()?'btn-gold':'btn-ghost')+'" data-yell="'+n+'" style="padding:7px 12px;font-size:12px;white-space:nowrap">📣 応援</button>'
+      +'<button class="btn '+(canBattle()?'btn-gold':'btn-ghost')+'" data-battle="'+n+'" style="padding:7px 12px;font-size:12px;white-space:nowrap">💪 腕相撲</button>'
+      +'</div></div>';
+  }).join("");
+  const importedHTML=imported.map(r=>{
+    const pw=powerScoreImported(r);
+    const ago=r.at?Math.round((Date.now()-r.at)/3600000):null;
+    const agoStr=ago===null?'':ago<1?'たった今':ago<24?ago+'時間前':Math.floor(ago/24)+'日前';
+    return '<div style="display:flex;align-items:center;gap:12px;padding:13px;border:1px solid rgba(99,102,241,.35);border-radius:12px;background:#0e0e11;margin-bottom:10px">'
+      +'<div style="width:40px;height:40px;border-radius:50%;background:linear-gradient(135deg,#4a9eff,#2563eb);display:grid;place-items:center;color:#fff;font-weight:800;flex-shrink:0">'+(r.n[0]||'?').toUpperCase()+'</div>'
+      +'<div style="flex:1;min-width:0"><b style="font-size:14px">'+r.n+'</b> <span style="font-size:11px;color:var(--sub)">'+(r.g==='female'?'♀':'♂')+'</span>'
+      +' <span class="badge" style="background:rgba(99,102,241,.13);color:#818cf8;font-size:10px">🌐 別デバイス</span>'
+      +'<div style="font-size:11px;color:var(--sub)">⚡パワー '+pw+' ・ '+(r.t||0)+'回トレ'+(agoStr?' ・ '+agoStr+'のデータ':'')+'</div></div>'
+      +'<div style="display:flex;flex-direction:column;gap:6px">'
+      +'<button class="btn '+(canBattle()?'btn-gold':'btn-ghost')+'" data-bimp="'+r.n+'" style="padding:7px 12px;font-size:12px;white-space:nowrap">💪 腕相撲</button>'
+      +'<button class="btn btn-ghost" data-delimp="'+r.n+'" style="padding:7px 12px;font-size:12px;white-space:nowrap;color:var(--red)">削除</button>'
+      +'</div></div>';
+  }).join("");
+  el.innerHTML=(localHTML+importedHTML)||'<div class="empty">ライバルがいません。上の「招待リンクをコピー」で友達に共有しよう！</div>';
+
+  document.getElementById("copyRivalLink")?.addEventListener("click",async()=>{
+    if(!ROOT.current){toast("先にログインしてください");return;}
+    const url=rivalShareURL();
+    try{await navigator.clipboard.writeText(url);toast("🔗 招待リンクをコピーしました！友達に送ろう💪");}
+    catch(e){const ta=document.createElement("textarea");ta.value=url;document.body.appendChild(ta);ta.select();document.execCommand("copy");ta.remove();toast("🔗 コピーしました！");}
+  });
+  document.getElementById("addRivalBtn")?.addEventListener("click",()=>{
+    const inp=document.getElementById("rivalCodeInput");
+    const val=(inp?.value||"").trim();if(!val){toast("友達の招待リンクを貼り付けてください");return;}
+    const m=val.match(/[#&]rival=([^&\s]+)/);
+    const code=m?m[1]:val;
+    if(importRival(code))inp.value="";
+  });
 }
 let fbType="要望";
 function renderFeedback(){
@@ -1484,8 +1553,11 @@ document.getElementById("fbCopy").onclick=async()=>{
 // arena (rivals): 応援 / 腕相撲
 document.getElementById("arenaList").addEventListener("click",e=>{
   const y=e.target.closest("[data-yell]");const b=e.target.closest("[data-battle]");
+  const bi=e.target.closest("[data-bimp]");const di=e.target.closest("[data-delimp]");
   if(y)sendYell(y.dataset.yell);
   if(b)startBattle(b.dataset.battle);
+  if(bi)startBattleImported(bi.dataset.bimp);
+  if(di){const n=di.dataset.delimp;ROOT.importedRivals=(ROOT.importedRivals||[]).filter(r=>r.n!==n);save();renderArena();toast("ライバルを削除しました");}
 });
 const battleModal=document.getElementById("battleModal");
 battleModal.addEventListener("click",e=>{if(e.target===battleModal||e.target.dataset.bclose!==undefined)battleModal.classList.remove("show");});
@@ -1561,6 +1633,7 @@ function bootUser(){
   bubble("dashBubble", S.gender==="female"?"今日も一緒にがんばろ！💛":"今日も鍛えていこか！💪");
   processEvents();
   notifyRivals();
+  if(window._pendingRival){const c=window._pendingRival;window._pendingRival=null;setTimeout(()=>{importRival(c);showView("arena");},400);}
 }
 function loginUser(name){ROOT.current=name;S=ROOT.users[name];save();bootUser();}
 document.getElementById("genderPick").addEventListener("click",e=>{
@@ -1594,11 +1667,28 @@ document.getElementById("userBox").onclick=openSwitch;
 
 // init
 document.getElementById("todayLabel").textContent="📅 "+new Date().toLocaleDateString("ja-JP",{year:"numeric",month:"long",day:"numeric",weekday:"short"});
+// ライバル招待リンクの処理（#rival=CODE）
+(()=>{
+  const m=location.hash.match(/[#&]rival=([^&\s]+)/);
+  if(m){
+    history.replaceState(null,"",location.pathname+location.search);
+    const code=m[1];const d=parseRivalCode(code);
+    if(d&&d.n){
+      if(ROOT.current&&ROOT.users[ROOT.current]){
+        // ログイン済み → すぐ追加
+        setTimeout(()=>{if(importRival(code))showView("arena");},300);
+      }else{
+        // ログイン前 → ログイン後に処理
+        window._pendingRival=code;
+      }
+    }
+  }
+})();
 if(ROOT.current && ROOT.users[ROOT.current]){
   bootUser();
 }else{
-  applyMode("mobile");        // 背景レイアウトだけ整える
-  showLogin();                // 最初は名前・性別を選んでログイン
+  applyMode("mobile");
+  showLogin();
 }
 </script>
 </body>
