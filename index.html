@@ -702,6 +702,7 @@ body.mode-mobile .modeswitch{order:-1;align-self:center}
 <script>
 /* =================== DATA =================== */
 const MILESTONES=[10,20,30,50,100,365];
+const DIET_MILESTONES=[10,20,30,50,100,200,365]; // ダイエット：7段階でスリムに
 const PARTS=[
   {key:"chest",name:"胸",muscles:["chestL","chestR"]},
   {key:"shoulder",name:"肩",muscles:["delL","delR"]},
@@ -711,6 +712,8 @@ const PARTS=[
   {key:"leg",name:"脚",muscles:["thighL","thighR","calfL","calfR"]},
   {key:"glute",name:"お尻",muscles:["hip"]},
 ];
+const CHIP_PARTS=[...PARTS,{key:"diet",name:"🔥ダイエット"}]; // 記録/履歴チップ用（筋肉計算には非影響）
+const partLabel=k=>(CHIP_PARTS.find(p=>p.key===k)?.name)||"";
 const EQUIP={
   bodyweight:"自重",dumbbell:"ダンベル",barbell:"バーベル",bench:"ベンチ台",smith:"スミスマシン",
   cable:"ケーブルマシン",latpull:"ラットプルダウン",chestpress:"チェストプレス",pecfly:"ペックフライ",
@@ -780,6 +783,11 @@ const EXERCISES=[
   {n:"ブルガリアンスクワット",p:"glute",req:["dumbbell"]},
   {n:"アブダクション",p:"glute",req:["abductor"]},
   {n:"ヒップリフト(自重)",p:"glute",req:["bodyweight"]},
+  // ダイエット（有酸素・痩身。ジムの器具に関係なくいつでも記録可）
+  {n:"ランニング",p:"diet",req:["bodyweight"]},
+  {n:"バイク",p:"diet",req:["bodyweight"]},
+  {n:"一駅分ウォーキング",p:"diet",req:["bodyweight"]},
+  {n:"カラオケ",p:"diet",req:["bodyweight"]},
 ];
 const ALLEQ=Object.keys(EQUIP);
 const GYMS=[
@@ -824,7 +832,7 @@ const todayStr=()=>{const d=new Date();return d.getFullYear()+"-"+String(d.getMo
 function rivalCode(){
   if(!ROOT.current)return"";
   const parts={};PARTS.forEach(p=>parts[p.key]=partDays(p.key));
-  const data={n:ROOT.current,g:S.gender,p:parts,pr:proteinDays(),t:S.trainings.length,at:Date.now()};
+  const data={n:ROOT.current,g:S.gender,p:parts,pr:proteinDays(),d:dietDays(),st:streakOf(S),t:S.trainings.length,at:Date.now()};
   return btoa(encodeURIComponent(JSON.stringify(data)));
 }
 function rivalShareURL(){return location.origin+location.pathname+'#rival='+rivalCode();}
@@ -870,6 +878,20 @@ function bodyLevel(){return bodyLevelOf(S);}
 function powerScore(u){return bodyLevelOf(u)+PARTS.reduce((a,p)=>a+levelFromDays(partDaysOf(u,p.key)),0);} // からだ全体＋全部位レベルの合計
 function muscleScale(lv){return 1+lv*0.085;}        // 0..6 -> 1..1.51
 function bodyScale(){return 1+bodyLevel()*0.03;}     // 全身
+// ダイエット：有酸素の日数でレベルUP→キャラがスリムに
+function dietDaysOf(u){return new Set((u.trainings||[]).filter(t=>t.p==='diet').map(t=>t.date)).size;}
+function dietLevelFromDays(d){let lv=0;for(const m of DIET_MILESTONES)if(d>=m)lv++;return lv;} // 0..7
+function nextDietMile(d){for(const m of DIET_MILESTONES)if(d<m)return m;return null;}
+function dietDays(){return dietDaysOf(S);}
+function dietLevel(){return dietLevelFromDays(dietDays());}
+function fatness(){return (DIET_MILESTONES.length - dietLevel())/DIET_MILESTONES.length;} // 1=ぽっちゃり, 0=スリム
+function streakOf(u){
+  const ds=new Set((u.trainings||[]).map(t=>t.date));let s=0;let d=new Date();
+  const t=todayStr();if(!ds.has(t)){d.setDate(d.getDate()-1);}
+  while(true){const k=d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
+    if(ds.has(k)){s++;d.setDate(d.getDate()-1);}else break;}
+  return s;
+}
 function uniqueTrainDates(){return [...new Set(S.trainings.map(t=>t.date))].sort();}
 function streak(){
   const ds=new Set(S.trainings.map(t=>t.date));let s=0;let d=new Date();
@@ -885,7 +907,7 @@ function streak(){
 const MC={
   chestL:[140,150],chestR:[180,150],delL:[118,126],delR:[202,126],
   latL:[120,185],latR:[200,185],armL:[84,95],armR:[236,95],
-  abs:[160,205],thighL:[120,288],thighR:[200,288],calfL:[100,322],calfR:[220,322],hip:[160,255]
+  abs:[160,205],thighL:[120,288],thighR:[200,288],calfL:[100,322],calfR:[220,322],hip:[160,255],belly:[160,206]
 };
 function buildSVG(gender){
   gender = gender || (typeof S==="object"&&S&&S.gender) || "male";
@@ -967,6 +989,10 @@ function buildSVG(gender){
         <line x1="144" y1="222" x2="176" y2="222"/>
       </g>
     </g>
+    <!-- ===== belly (ダイエットで縮む。最初はぽっちゃり、腹筋を隠す) ===== -->
+    <g class="muscle" id="m-belly"><ellipse cx="160" cy="206" rx="40" ry="44" fill="url(#skin)"/>
+      <path d="M150 196 Q160 204 170 196" stroke="#a9842b" stroke-width="2" fill="none" opacity=".6"/>
+      <circle cx="160" cy="212" r="3" fill="#a9842b" opacity=".5"/></g>
     <!-- ===== neck ===== -->
     <path d="M150 94 L170 94 L173 114 L147 114 Z" fill="url(#skin)"/>
     ${hairBehind}
@@ -1000,6 +1026,11 @@ function applyMuscles(svg){
       el.style.filter = lv>=4 ? "drop-shadow(0 0 6px rgba(240,215,122,.6))" : "none";
     });
   });
+  const belly=svg.querySelector("#m-belly");
+  if(belly){const f=fatness();const [bx,by]=MC.belly;const bsc=(0.15+f*1.05).toFixed(3);
+    belly.setAttribute("transform",`translate(${bx} ${by}) scale(${bsc}) translate(${-bx} ${-by})`);
+    belly.style.opacity = (f<=0.02?0:0.55+f*0.45).toFixed(2);
+  }
   const root=svg.querySelector("#bodyRoot");
   if(root){const bs=bodyScale();root.setAttribute("transform",`translate(150 320) scale(${bs.toFixed(3)}) translate(-150 -320)`);}
 }
@@ -1058,16 +1089,22 @@ function renderParts(){
   document.getElementById("charParts").innerHTML=PARTS.map(p=>partRowHTML(p,1)).join("");
   // body milestones on character page
   const bd=proteinDays(),bl=bodyLevel();
+  // ダイエット（スリム化）
+  const dd=dietDays(),dl=dietLevel();const dPrev=dl>0?DIET_MILESTONES[dl-1]:0;const dNext=nextDietMile(dd);
   document.getElementById("charBody").innerHTML=
     `<div class="partrow"><div class="top"><span class="name">からだ全体 (タンパク質)</span><span class="lv">Lv.${bl}</span></div>
      <div class="bar"><i style="width:${nextMile(bd)?Math.round((bd-(bl>0?MILESTONES[bl-1]:0))/((nextMile(bd))-(bl>0?MILESTONES[bl-1]:0))*100):100}%"></i></div>
      <div class="meta">${bd}日 達成 ${nextMile(bd)?`／ あと ${nextMile(bd)-bd}日 でLv.${bl+1}`:"／ MAX！🏆"}</div></div>
-     <div class="lvlist">${MILESTONES.map(m=>`<div class="lvchip ${bd>=m?'hit':''}"><b>${m}日</b>${bd>=m?'達成✓':'未達'}</div>`).join("")}</div>`;
+     <div class="lvlist">${MILESTONES.map(m=>`<div class="lvchip ${bd>=m?'hit':''}"><b>${m}日</b>${bd>=m?'達成✓':'未達'}</div>`).join("")}</div>
+     <div class="partrow" style="margin-top:14px"><div class="top"><span class="name">🔥 ダイエット（スリム化）</span><span class="lv">Lv.${dl}/7</span></div>
+       <div class="bar"><i style="width:${dNext?Math.round((dd-dPrev)/(dNext-dPrev)*100):100}%"></i></div>
+       <div class="meta">${dd}日 達成 ${dNext?`／ あと ${dNext-dd}日 でさらにスリムに`:"／ 完全スリム達成！🏆"}　有酸素(ランニング等)を記録しよう</div></div>
+     <div class="lvlist">${DIET_MILESTONES.map(m=>`<div class="lvchip ${dd>=m?'hit':''}"><b>${m}日</b>${dd>=m?'✓':''}</div>`).join("")}</div>`;
 }
 function renderRecent(){
   const r=[...S.trainings].slice(-5).reverse();
   document.getElementById("recentList").innerHTML = r.length? r.map(t=>{
-    const pn=PARTS.find(p=>p.key===t.p)?.name||"";
+    const pn=partLabel(t.p);
     return `<div style="display:flex;justify-content:space-between;align-items:center;padding:11px 0;border-bottom:1px solid #1b1b1f">
       <div><b style="font-size:14px">${t.ex}</b><div style="font-size:11px;color:var(--sub)">${t.date} ・ <span class="tag">${pn}</span></div></div>
       <div style="text-align:right;font-size:13px;font-weight:700">${t.w}kg × ${t.r} × ${t.s}<div style="font-size:11px;color:var(--gold-dim)">1RM ≈ ${Math.round(t.w*(1+t.r/30))}kg</div></div>
@@ -1078,7 +1115,7 @@ function renderHistory(){
   const r=[...S.trainings].reverse();
   document.getElementById("historyTable").innerHTML = r.length? `<table><thead><tr>
     <th>日付</th><th>部位</th><th>種目</th><th>重量×回数×セット</th><th>ボリューム</th><th>メモ</th><th></th></tr></thead><tbody>`+
-    r.map(t=>{const pn=PARTS.find(p=>p.key===t.p)?.name||"";
+    r.map(t=>{const pn=partLabel(t.p);
       return `<tr><td>${t.date}</td><td><span class="tag">${pn}</span></td><td>${t.ex}</td>
       <td>${t.w}kg × ${t.r} × ${t.s}</td><td>${(t.w*t.r*t.s).toLocaleString()}kg</td>
       <td style="color:var(--sub)">${t.memo||"—"}</td><td><span class="del" data-del="${t.id}">削除</span></td></tr>`;}).join("")+
@@ -1102,13 +1139,13 @@ function renderCustomExList(){
 }
 function renderRecord(){
   document.getElementById("recGymName").textContent=currentGym().name;
-  document.getElementById("partChips").innerHTML=PARTS.map(p=>
+  document.getElementById("partChips").innerHTML=CHIP_PARTS.map(p=>
     `<div class="chip ${p.key===recPart?'on':''}" data-rp="${p.key}">${p.name}</div>`).join("");
   fillExSelect(document.getElementById("exSelect"),recPart);
   renderCustomExList();
   // 強化の飴トグル
   const row=document.getElementById("boostRow");
-  if(row){const has=(S.candy||0)>0;row.style.display=has?"flex":"none";
+  if(row){const has=(S.candy||0)>0 && recPart!=='diet';row.style.display=has?"flex":"none";
     const cc=document.getElementById("candyCount");if(cc)cc.textContent="（保有 "+(S.candy||0)+"個）";
     if(!has){const uc=document.getElementById("useCandy");if(uc)uc.checked=false;}}
 }
@@ -1128,12 +1165,12 @@ function renderModalChips(){
   if(ms)ms.innerHTML=`<option value="">（単発記録）</option>`+S.menus.map(m=>`<option value="${m.id}">${m.name}（${m.items.length}種目）</option>`).join("");
   // 強化の飴トグル（モーダル）
   const row=document.getElementById("mBoostRow");
-  if(row){const has=(S.candy||0)>0;row.style.display=has?"flex":"none";
+  if(row){const has=(S.candy||0)>0 && mPart!=='diet';row.style.display=has?"flex":"none";
     const cc=document.getElementById("mCandyCount");if(cc)cc.textContent="（保有 "+(S.candy||0)+"個）";
     const uc=document.getElementById("mUseCandy");if(uc&&!has)uc.checked=false;}
 }
 let menuPart="chest", menuDraft=[];
-const partName=k=>PARTS.find(p=>p.key===k)?.name||"";
+const partName=k=>partLabel(k);
 function renderMenu(){
   document.getElementById("menuGymName").textContent=currentGym().name;
   document.getElementById("menuPartChips").innerHTML=PARTS.map(p=>
@@ -1245,27 +1282,33 @@ function renderBadges(){
 function rivalFeed(){ // 自分以外の活動を新しい順に
   return ROOT.feed.filter(f=>f.name!==ROOT.current).slice().reverse();
 }
+function friendStatuses(){ // 同端末ユーザー＋リンクで追加した友達
+  const list=[];
+  userList().filter(n=>n!==ROOT.current).forEach(n=>{const u=ROOT.users[n];
+    list.push({name:n,gender:u.gender,power:powerScore(u),workouts:new Set(u.trainings.map(t=>t.date)).size,
+      streak:streakOf(u),today:u.trainings.some(t=>t.date===todayStr()),diet:dietLevelFromDays(dietDaysOf(u)),src:'local'});});
+  (ROOT.importedRivals||[]).filter(r=>!ROOT.users[r.n]).forEach(r=>{
+    list.push({name:r.n,gender:r.g,power:powerScoreImported(r),workouts:r.t||0,streak:r.st||0,
+      today:null,diet:dietLevelFromDays(r.d||0),at:r.at,src:'imported'});});
+  return list.sort((a,b)=>b.power-a.power);
+}
 function renderRivals(){
   const el=document.getElementById("dashRivals");if(!el)return;
-  const fe=rivalFeed().slice(0,5);
-  const imported=(ROOT.importedRivals||[]).filter(r=>!ROOT.users[r.n]).slice(0,4);
-  let html='';
-  html+=fe.map(f=>`<div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid #1b1b1f">
-      <div style="width:30px;height:30px;border-radius:50%;background:var(--goldgrad);display:grid;place-items:center;color:#1a1408;font-weight:800;flex-shrink:0">${(f.name[0]||'?').toUpperCase()}</div>
-      <div style="font-size:12.5px"><b>${f.name}</b> さんがジムで頑張ったよ！🔥<div style="font-size:10.5px;color:var(--sub)">${f.date}　負けてられへんで！💪</div></div>
-    </div>`).join("");
-  if(imported.length){
-    if(html)html+=`<div style="margin-top:8px;font-size:11px;color:var(--sub);font-weight:700;padding:6px 0 2px">🌐 別デバイスのライバル</div>`;
-    html+=imported.map(r=>{
-      const ago=r.at?Math.round((Date.now()-r.at)/3600000):null;
-      const agoStr=ago===null?'':ago<1?'たった今':ago<24?ago+'時間前':Math.floor(ago/24)+'日前';
-      return `<div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid #1b1b1f">
-        <div style="width:30px;height:30px;border-radius:50%;background:linear-gradient(135deg,#4a9eff,#2563eb);display:grid;place-items:center;color:#fff;font-weight:800;flex-shrink:0">${(r.n[0]||'?').toUpperCase()}</div>
-        <div style="font-size:12.5px"><b>${r.n}</b> ⚡${powerScoreImported(r)}<span style="font-size:10.5px;color:var(--sub)">${agoStr?' · '+agoStr:''}</span></div>
-      </div>`;
-    }).join("");
-  }
-  el.innerHTML=html||`<div style="color:var(--sub);font-size:12.5px">まだライバルの記録はありません。友達を招待して一緒に競おう！</div>`;
+  const fs=friendStatuses();
+  el.innerHTML = fs.length
+    ? fs.map(f=>{
+        const todayBadge = f.today===null
+          ? `<span style="color:var(--sub)">${f.at?'更新 '+new Date(f.at).toLocaleDateString('ja-JP',{month:'numeric',day:'numeric'}):''}</span>`
+          : (f.today?`<span style="color:var(--green)">今日トレ済み✓</span>`:`<span style="color:var(--gold-dim)">今日まだ</span>`);
+        return `<div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid #1b1b1f">
+        <div style="width:34px;height:34px;border-radius:50%;background:var(--goldgrad);display:grid;place-items:center;color:#1a1408;font-weight:800;flex-shrink:0">${(f.name[0]||'?').toUpperCase()}</div>
+        <div style="flex:1;min-width:0">
+          <b style="font-size:13px">${f.name}</b> <span style="font-size:10px;color:var(--sub)">${f.gender==='female'?'♀':'♂'}${f.src==='imported'?' 🔗':''}</span>
+          <div style="font-size:10.5px;color:var(--sub)">⚡${f.power} ・ 計${f.workouts}回 ・ 🔥${f.streak}日連続${f.diet>0?' ・ 痩Lv'+f.diet:''}</div>
+        </div>
+        <div style="font-size:10.5px;text-align:right;white-space:nowrap">${todayBadge}</div>
+      </div>`;}).join("")
+    : `<div style="color:var(--sub);font-size:12.5px">まだ友達がいません。「⚔️ライバル対戦」の共有リンクで友達を追加すると、ここに状況が出ます！</div>`;
 }
 function notifyRivals(){ // ログイン時：前回ログイン以降のライバル活動を通知
   const since=S.lastSeen||0;
