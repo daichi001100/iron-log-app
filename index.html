@@ -269,6 +269,7 @@ body.mode-mobile .modeswitch{order:-1;align-self:center}
     <a data-view="protein"><span class="ic">🥩</span>タンパク質</a>
     <a data-view="gym"><span class="ic">📍</span>ジム設定</a>
     <a data-view="arena"><span class="ic">⚔️</span>ライバル対戦</a>
+    <a data-view="group"><span class="ic">👥</span>グループ</a>
     <a data-view="history"><span class="ic">📋</span>履歴</a>
     <a data-view="feedback"><span class="ic">💡</span>改善フォーム</a>
   </nav>
@@ -558,6 +559,32 @@ body.mode-mobile .modeswitch{order:-1;align-self:center}
     </div>
   </section>
 
+  <!-- ========== GROUP ========== -->
+  <section class="view" id="view-group">
+    <div class="grid">
+      <div class="panel">
+        <h2>👥 グループ</h2>
+        <p style="font-size:12px;color:var(--sub);margin:-8px 0 16px">
+          グループを作って友達と活動を共有。グループ内の誰にでも応援・腕相撲ができます。招待リンクで別デバイスの人も招待できます。
+        </p>
+        <div class="field">
+          <label>新しいグループを作る</label>
+          <div style="display:flex;gap:8px">
+            <input type="text" id="groupName" placeholder="例：筋トレ部 / 朝活チーム">
+            <button class="btn btn-gold" id="createGroupBtn" style="white-space:nowrap;padding:10px 14px">＋ 作る</button>
+          </div>
+        </div>
+        <div style="border-top:1px solid var(--line);margin:14px 0 12px"></div>
+        <p style="font-size:12px;font-weight:700;color:var(--sub);margin-bottom:10px">参加中のグループ</p>
+        <div id="groupList"></div>
+      </div>
+      <div class="panel">
+        <h2>グループの活動</h2>
+        <div id="groupFeed"></div>
+      </div>
+    </div>
+  </section>
+
   <!-- ========== FEEDBACK ========== -->
   <section class="view" id="view-feedback">
     <div class="grid">
@@ -599,6 +626,7 @@ body.mode-mobile .modeswitch{order:-1;align-self:center}
     <a data-view="character"><span class="ic">💪</span>きんに君</a>
     <a data-view="protein"><span class="ic">🥩</span>タンパク</a>
     <a data-view="arena"><span class="ic">⚔️</span>対戦</a>
+    <a data-view="group"><span class="ic">👥</span>グループ</a>
     <a data-view="gym"><span class="ic">📍</span>ジム</a>
     <a data-view="history"><span class="ic">📋</span>履歴</a>
   </div>
@@ -777,7 +805,7 @@ const GYMS=[
 const LS="ironlog_v2", LS_OLD="ironlog_v1";
 function blankUser(gender){return {gender:gender||"male",trainings:[],protein:[],bw:gender==="female"?55:72,gym:"full",customGyms:[],menus:[],customExercises:[],mode:"mobile",lastSeen:Date.now(),candy:0,bonus:{},lastYellDate:null,lastBattleDate:null,proteinPenalty:null,lastEventTs:0};}
 function normUser(u,gender){u.gender=u.gender||gender||"male";if(!u.menus)u.menus=[];if(!u.customGyms)u.customGyms=[];if(!u.customExercises)u.customExercises=[];if(!u.mode)u.mode="mobile";if(u.bw==null)u.bw=72;if(!u.trainings)u.trainings=[];if(!u.protein)u.protein=[];if(u.lastSeen==null)u.lastSeen=Date.now();if(u.candy==null)u.candy=0;if(!u.bonus)u.bonus={};if(u.lastYellDate===undefined)u.lastYellDate=null;if(u.lastBattleDate===undefined)u.lastBattleDate=null;if(u.proteinPenalty===undefined)u.proteinPenalty=null;if(u.lastEventTs==null)u.lastEventTs=0;return u;}
-function normRoot(d){if(!d.feed)d.feed=[];if(!d.feedback)d.feedback=[];if(!d.events)d.events=[];if(!d.importedRivals)d.importedRivals=[];return d;}
+function normRoot(d){if(!d.feed)d.feed=[];if(!d.feedback)d.feedback=[];if(!d.events)d.events=[];if(!d.importedRivals)d.importedRivals=[];if(!d.groups)d.groups=[];if(!d.pendingMutualRivals)d.pendingMutualRivals={};return d;}
 function loadRoot(){
   try{const d=JSON.parse(localStorage.getItem(LS));if(d&&d.users){Object.keys(d.users).forEach(k=>normUser(d.users[k]));return normRoot(d);}}catch(e){}
   // v1(単一ユーザー)からの移行：既存データを「Daichi」として引き継ぐ
@@ -805,12 +833,21 @@ function importRival(code){
   const d=parseRivalCode(code);
   if(!d||!d.n){toast("❌ リンクが無効です");return false;}
   if(d.n===ROOT.current){toast("自分自身はライバルに追加できません");return false;}
-  if(ROOT.users[d.n]){toast(d.n+"さんはすでにこの端末にいます");return false;}
+  if(ROOT.users[d.n]){
+    // 同一端末：相手がログインしたときに自分を自動登録
+    if(!ROOT.pendingMutualRivals)ROOT.pendingMutualRivals={};
+    ROOT.pendingMutualRivals[d.n]=rivalCode();
+    toast(d.n+"さんはこの端末にいます（次回ログイン時に相互ライバル登録されます💪）");
+    save();return false;
+  }
   if(!ROOT.importedRivals)ROOT.importedRivals=[];
   const idx=ROOT.importedRivals.findIndex(r=>r.n===d.n);
   if(idx>=0){ROOT.importedRivals[idx]=d;toast("🔄 "+d.n+"さんのデータを更新しました！");}
   else{ROOT.importedRivals.push(d);toast("✅ "+d.n+"さんをライバルに追加！💪");}
-  save();return true;
+  save();
+  // 別デバイス：自分のリンクも相手に送るよう案内
+  setTimeout(()=>toast('📣 対戦画面から「招待リンクをコピー」して'+d.n+'さんにも送ろう！お互いにライバル登録できるよ'),1800);
+  return true;
 }
 function powerScoreImported(imp){
   return levelFromDays(imp.pr||0)+PARTS.reduce((s,p)=>s+levelFromDays((imp.p||{})[p.key]||0),0);
@@ -1210,13 +1247,25 @@ function rivalFeed(){ // 自分以外の活動を新しい順に
 }
 function renderRivals(){
   const el=document.getElementById("dashRivals");if(!el)return;
-  const fe=rivalFeed().slice(0,8);
-  el.innerHTML = fe.length
-    ? fe.map(f=>`<div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid #1b1b1f">
-        <div style="width:30px;height:30px;border-radius:50%;background:var(--goldgrad);display:grid;place-items:center;color:#1a1408;font-weight:800;flex-shrink:0">${(f.name[0]||'?').toUpperCase()}</div>
-        <div style="font-size:12.5px"><b>${f.name}</b> さんがジムで頑張ったよ！🔥<div style="font-size:10.5px;color:var(--sub)">${f.date}　負けてられへんで！💪</div></div>
-      </div>`).join("")
-    : `<div style="color:var(--sub);font-size:12.5px">まだライバルの記録はありません。友達を👤から追加して一緒に競おう！</div>`;
+  const fe=rivalFeed().slice(0,5);
+  const imported=(ROOT.importedRivals||[]).filter(r=>!ROOT.users[r.n]).slice(0,4);
+  let html='';
+  html+=fe.map(f=>`<div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid #1b1b1f">
+      <div style="width:30px;height:30px;border-radius:50%;background:var(--goldgrad);display:grid;place-items:center;color:#1a1408;font-weight:800;flex-shrink:0">${(f.name[0]||'?').toUpperCase()}</div>
+      <div style="font-size:12.5px"><b>${f.name}</b> さんがジムで頑張ったよ！🔥<div style="font-size:10.5px;color:var(--sub)">${f.date}　負けてられへんで！💪</div></div>
+    </div>`).join("");
+  if(imported.length){
+    if(html)html+=`<div style="margin-top:8px;font-size:11px;color:var(--sub);font-weight:700;padding:6px 0 2px">🌐 別デバイスのライバル</div>`;
+    html+=imported.map(r=>{
+      const ago=r.at?Math.round((Date.now()-r.at)/3600000):null;
+      const agoStr=ago===null?'':ago<1?'たった今':ago<24?ago+'時間前':Math.floor(ago/24)+'日前';
+      return `<div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid #1b1b1f">
+        <div style="width:30px;height:30px;border-radius:50%;background:linear-gradient(135deg,#4a9eff,#2563eb);display:grid;place-items:center;color:#fff;font-weight:800;flex-shrink:0">${(r.n[0]||'?').toUpperCase()}</div>
+        <div style="font-size:12.5px"><b>${r.n}</b> ⚡${powerScoreImported(r)}<span style="font-size:10.5px;color:var(--sub)">${agoStr?' · '+agoStr:''}</span></div>
+      </div>`;
+    }).join("");
+  }
+  el.innerHTML=html||`<div style="color:var(--sub);font-size:12.5px">まだライバルの記録はありません。友達を招待して一緒に競おう！</div>`;
 }
 function notifyRivals(){ // ログイン時：前回ログイン以降のライバル活動を通知
   const since=S.lastSeen||0;
@@ -1249,13 +1298,12 @@ function startBattle(name){
   const myWinProb = my>ov?0.70 : my<ov?0.30 : 0.50; // 合計値が高い方の勝率70%
   const iWin = Math.random()<myWinProb;
   S.lastBattleDate=todayStr();
-  // 相手向けイベント（相手がログインした時に処理）
   ROOT.events.push({id:"b"+Date.now(),type:"battle",from:ROOT.current,to:name,ts:Date.now(),date:todayStr(),recipientWon:!iWin,processed:false});
-  if(!iWin){ // 自分が負け → 翌日タンパク質2倍ペナルティ
-    S.proteinPenalty=addDays(todayStr(),1);
-  }
+  let winPart=null;
+  if(iWin){winPart=battleWinLevelUp();}
+  else{S.proteinPenalty=addDays(todayStr(),1);}
   save();
-  showBattleResult(name,iWin,my,ov,myWinProb);
+  showBattleResult(name,iWin,my,ov,myWinProb,winPart);
   renderArena();renderRivals();renderProtein();
 }
 function startBattleImported(name){
@@ -1265,8 +1313,10 @@ function startBattleImported(name){
   const myWinProb=my>ov?0.70:my<ov?0.30:0.50;
   const iWin=Math.random()<myWinProb;
   S.lastBattleDate=todayStr();
-  if(!iWin)S.proteinPenalty=addDays(todayStr(),1);
-  save();showBattleResult(name,iWin,my,ov,myWinProb);renderArena();renderProtein();
+  let winPartI=null;
+  if(iWin){winPartI=battleWinLevelUp();}
+  else{S.proteinPenalty=addDays(todayStr(),1);}
+  save();showBattleResult(name,iWin,my,ov,myWinProb,winPartI);renderArena();renderProtein();
 }
 function applyBattlePenalty(battleDate){ // 受信側が負けた時：翌日(過ぎていれば今日)を2倍に
   let pd=addDays(battleDate,1); if(dayDiff(todayStr(),pd)>0)pd=todayStr();
@@ -1283,18 +1333,40 @@ function processEvents(){ // ログイン時：自分宛ての応援・バトル
       else{applyBattlePenalty(ev.date);msgs.push(`💥 ${ev.from} との腕相撲に負けた…${S.proteinPenalty}はタンパク質2倍やで！`);}
     }
   });
+  // 相互ライバル通知（同一端末で別ユーザーが自分をライバル追加した場合）
+  const pend=(ROOT.pendingMutualRivals||{})[me];
+  if(pend){
+    const pd=parseRivalCode(pend);
+    if(pd&&pd.n&&pd.n!==me)msgs.push('🔗 '+pd.n+'さんがあなたをライバルに追加したよ！ライバル対戦で確認しよう💪');
+    delete ROOT.pendingMutualRivals[me];
+    changed=true;
+  }
   if(changed)save();
   msgs.forEach((m,i)=>setTimeout(()=>toast(m),900+i*1600));
 }
-function showBattleResult(name,iWin,my,ov,prob){
+function battleWinLevelUp(){
+  let best=null,minNeeded=Infinity;
+  PARTS.forEach(p=>{
+    const d=partDays(p.key),nm=nextMile(d);
+    if(nm===null)return; // 既にMAX
+    const needed=nm-d;
+    if(needed<minNeeded){minNeeded=needed;best=p;}
+  });
+  if(!best)return null;
+  S.bonus[best.key]=(S.bonus[best.key]||0)+minNeeded; // nextMilestoneを超えるだけ加算
+  return best;
+}
+function showBattleResult(name,iWin,my,ov,prob,winPart){
   const box=document.getElementById("battleModalBody");
+  const lvUpHtml=winPart
+    ?`<div style="margin-top:12px;padding:12px;background:rgba(212,175,55,.13);border:1px solid var(--gold-dim);border-radius:12px;font-size:14px;font-weight:800;color:var(--gold2)">⬆️ <b>${winPart.name}</b> がレベルアップ！</div>`:'';
   box.innerHTML=`
     <div style="text-align:center">
       <div style="font-size:40px">${iWin?"🏆":"💥"}</div>
       <div style="font-size:22px;font-weight:800;color:${iWin?'var(--gold2)':'var(--red)'};margin:6px 0">${iWin?"勝利！":"敗北…"}</div>
       <p style="font-size:13px;color:var(--sub)">${ROOT.current}（パワー${my}）vs ${name}（パワー${ov}）<br>勝率 ${Math.round(prob*100)}% の勝負！</p>
       <div style="margin-top:14px;font-size:14px;font-weight:700">${iWin
-        ? `${name} に勝った！この調子で鍛えていこ💪`
+        ? `${name} に勝った！この調子で鍛えていこ💪${lvUpHtml}`
         : `<span style="color:var(--red)">明日はタンパク質2倍（${Math.round((S.bw||72)*1.6*2)}g）取らないと達成にならへんで！</span>`}</div>
     </div>`;
   document.getElementById("battleModal").classList.add("show");
@@ -1377,8 +1449,97 @@ function feedbackAsText(){
     `${i+1}. [${f.type}] ${f.user}（${f.date}）\n   ${f.text}`).join("\n");
 }
 
+/* =================== GROUPS =================== */
+function createGroup(name){
+  if(!ROOT.current||!name.trim())return null;
+  const g={id:"g"+Date.now(),name:name.trim(),createdBy:ROOT.current,createdAt:Date.now(),members:[{n:ROOT.current,local:true}]};
+  if(!ROOT.groups)ROOT.groups=[];
+  ROOT.groups.push(g);save();return g;
+}
+function genGroupLink(gid){
+  if(!ROOT.current)return"";
+  const g=(ROOT.groups||[]).find(x=>x.id===gid);if(!g)return"";
+  const data={id:gid,name:g.name,code:rivalCode()};
+  return location.origin+location.pathname+'#group='+btoa(encodeURIComponent(JSON.stringify(data)));
+}
+function parseGroupLink(hash){try{return JSON.parse(decodeURIComponent(atob(hash)));}catch(e){return null;}}
+function joinGroup(gid,gname,memberCode){
+  if(!ROOT.groups)ROOT.groups=[];
+  let g=ROOT.groups.find(x=>x.id===gid);
+  if(!g){g={id:gid,name:gname,createdBy:null,createdAt:Date.now(),members:[]};ROOT.groups.push(g);}
+  const inviter=parseRivalCode(memberCode);
+  if(inviter&&inviter.n&&!g.members.find(m=>m.n===inviter.n)){
+    if(ROOT.users[inviter.n]){g.members.push({n:inviter.n,local:true});}
+    else{
+      g.members.push({n:inviter.n,local:false,code:memberCode,addedAt:Date.now()});
+      if(!ROOT.importedRivals)ROOT.importedRivals=[];
+      if(!ROOT.importedRivals.find(r=>r.n===inviter.n))ROOT.importedRivals.push(inviter);
+    }
+  }
+  if(ROOT.current&&!g.members.find(m=>m.n===ROOT.current))g.members.push({n:ROOT.current,local:true});
+  save();return g;
+}
+let activeGroupId=null;
+function renderGroup(){
+  const listEl=document.getElementById("groupList");
+  const feedEl=document.getElementById("groupFeed");
+  if(!listEl||!feedEl)return;
+  const groups=ROOT.groups||[];
+  listEl.innerHTML=groups.length?groups.map(g=>{
+    const isMember=g.members.some(m=>m.n===ROOT.current);
+    const isActive=g.id===activeGroupId;
+    return '<div class="gymcard '+(isActive?'on':'')+'" data-group="'+g.id+'" style="margin-bottom:10px;cursor:pointer">'
+      +'<div style="display:flex;justify-content:space-between;align-items:center">'
+      +'<h4>👥 '+g.name+'</h4>'
+      +(isMember?'<span class="badge" style="background:rgba(95,208,138,.13);color:var(--green)">参加中</span>':'')
+      +'</div><p style="margin-top:4px;font-size:12px;color:var(--sub)">メンバー '+g.members.length+'人</p>'
+      +'<div style="display:flex;gap:8px;margin-top:10px">'
+      +'<button class="btn btn-gold" data-glink="'+g.id+'" style="padding:7px 12px;font-size:12px">🔗 招待リンク</button>'
+      +(g.createdBy===ROOT.current?'<button class="btn btn-ghost" data-gdelete="'+g.id+'" style="padding:7px 12px;font-size:12px;color:var(--red)">削除</button>':'')
+      +'</div></div>';
+  }).join(""):'<div class="empty">グループがありません。上で作成するか、招待リンクから参加しましょう。</div>';
+
+  if(!activeGroupId||!groups.find(g=>g.id===activeGroupId)){
+    feedEl.innerHTML='<div class="empty" style="padding:24px">← グループを選ぶとメンバーの活動が見れます</div>';return;
+  }
+  const g=groups.find(x=>x.id===activeGroupId);
+  const me=ROOT.current;
+  let html='<div style="margin-bottom:14px"><b style="font-size:14px">👥 '+g.name+' のメンバー ('+g.members.length+'人)</b></div>';
+  const others=g.members.filter(m=>m.n!==me);
+  if(!others.length){
+    html+='<div class="empty">まだあなただけです。招待リンクを送って仲間を増やそう！</div>';
+  }else{
+    html+=others.map(m=>{
+      const isLocal=m.local||!!ROOT.users[m.n];
+      const u=ROOT.users[m.n];
+      let pw=0,trains=0,lastActive='';
+      if(isLocal&&u){pw=powerScore(u);trains=new Set(u.trainings.map(t=>t.date)).size;
+        const lf=ROOT.feed.filter(f=>f.name===m.n).slice(-1)[0];lastActive=lf?lf.date:'';}
+      else if(m.code){const md=parseRivalCode(m.code);if(md){pw=powerScoreImported(md);trains=md.t||0;}}
+      const yBtn='<button class="btn '+(canYell()?'btn-gold':'btn-ghost')+'" data-gyell="'+m.n+'" style="padding:7px 11px;font-size:11px;white-space:nowrap">📣 応援</button>';
+      const bBtn='<button class="btn '+(canBattle()?'btn-gold':'btn-ghost')+'" '+(isLocal?'data-battle="'+m.n+'"':'data-bimp="'+m.n+'"')+' style="padding:7px 11px;font-size:11px;white-space:nowrap">💪 腕相撲</button>';
+      return '<div style="display:flex;align-items:center;gap:12px;padding:13px;border:1px solid var(--line);border-radius:12px;background:#0e0e11;margin-bottom:10px">'
+        +'<div style="width:40px;height:40px;border-radius:50%;background:'+(isLocal?'var(--goldgrad)':'linear-gradient(135deg,#4a9eff,#2563eb)')+';display:grid;place-items:center;color:'+(isLocal?'#1a1408':'#fff')+';font-weight:800;flex-shrink:0">'+(m.n[0]||'?').toUpperCase()+'</div>'
+        +'<div style="flex:1;min-width:0"><b style="font-size:14px">'+m.n+'</b>'
+        +(isLocal?'<span style="font-size:10px;margin-left:6px;color:var(--green)">●この端末</span>':'<span style="font-size:10px;margin-left:6px;color:#818cf8">●別デバイス</span>')
+        +'<div style="font-size:11px;color:var(--sub)">⚡パワー '+pw+' ・ '+trains+'回トレ'+(lastActive?' ・ '+lastActive:'')+'</div></div>'
+        +'<div style="display:flex;flex-direction:column;gap:6px">'+yBtn+bBtn+'</div></div>';
+    }).join("");
+  }
+  const localNames=g.members.filter(m=>m.n!==me&&ROOT.users[m.n]).map(m=>m.n);
+  const feed=ROOT.feed.filter(f=>localNames.includes(f.name)).slice().reverse().slice(0,8);
+  if(feed.length){
+    html+='<div style="margin-top:16px;border-top:1px solid var(--line);padding-top:12px"><b style="font-size:12px;color:var(--sub)">グループ内の最近の活動</b></div>';
+    html+=feed.map(f=>`<div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid #1b1b1f">
+      <div style="width:28px;height:28px;border-radius:50%;background:var(--goldgrad);display:grid;place-items:center;color:#1a1408;font-weight:800;font-size:12px;flex-shrink:0">${(f.name[0]||'?').toUpperCase()}</div>
+      <div style="font-size:12px"><b>${f.name}</b> さんが頑張ったよ！🔥<span style="font-size:10px;color:var(--sub);margin-left:6px">${f.date}</span></div>
+    </div>`).join("");
+  }
+  feedEl.innerHTML=html;
+}
+
 function renderAll(){
-  renderStats();renderParts();renderRecent();renderHistory();renderRecord();renderProtein();renderGym();renderBadges();renderMenu();renderRivals();renderFeedback();renderArena();
+  renderStats();renderParts();renderRecent();renderHistory();renderRecord();renderProtein();renderGym();renderBadges();renderMenu();renderRivals();renderFeedback();renderArena();renderGroup();
   refreshAllChars();
   // page bubbles
   bubble("charPageBubble","ええ筋肉になってきたで！💪");
@@ -1561,7 +1722,41 @@ document.getElementById("arenaList").addEventListener("click",e=>{
 });
 const battleModal=document.getElementById("battleModal");
 battleModal.addEventListener("click",e=>{if(e.target===battleModal||e.target.dataset.bclose!==undefined)battleModal.classList.remove("show");});
-document.getElementById("battleOk").onclick=()=>battleModal.classList.remove("show");
+document.getElementById("battleOk").onclick=()=>{battleModal.classList.remove("show");renderParts();renderBadges();refreshAllChars();};
+
+// group
+document.getElementById("createGroupBtn").onclick=()=>{
+  if(!ROOT.current){toast("先にログインしてください");return;}
+  const name=document.getElementById("groupName").value.trim();
+  if(!name){toast("グループ名を入力してください");return;}
+  const g=createGroup(name);
+  document.getElementById("groupName").value="";
+  activeGroupId=g.id;renderGroup();
+  toast("👥 グループ「"+g.name+"」を作成！招待リンクをコピーして友達に送ろう");
+};
+document.getElementById("groupList").addEventListener("click",async e=>{
+  const gd=e.target.closest("[data-gdelete]");
+  const gl=e.target.closest("[data-glink]");
+  const gc=e.target.closest("[data-group]");
+  if(gd){e.stopPropagation();
+    if(confirm("このグループを削除しますか？")){
+      const id=gd.dataset.gdelete;ROOT.groups=ROOT.groups.filter(g=>g.id!==id);
+      if(activeGroupId===id)activeGroupId=null;save();renderGroup();toast("グループを削除しました");}return;}
+  if(gl){e.stopPropagation();
+    const url=genGroupLink(gl.dataset.glink);
+    if(!url){toast("グループが見つかりません");return;}
+    try{await navigator.clipboard.writeText(url);toast("🔗 グループ招待リンクをコピー！友達に送ろう💪");}
+    catch(err){toast("🔗 コピー失敗。手動でコピーしてください");}return;}
+  if(gc){activeGroupId=gc.dataset.group;renderGroup();}
+});
+document.getElementById("groupFeed").addEventListener("click",e=>{
+  const gy=e.target.closest("[data-gyell]");
+  const gb=e.target.closest("[data-battle]");
+  const bi=e.target.closest("[data-bimp]");
+  if(gy){sendYell(gy.dataset.gyell);renderGroup();}
+  if(gb){startBattle(gb.dataset.battle);renderGroup();}
+  if(bi){startBattleImported(bi.dataset.bimp);renderGroup();}
+});
 
 // visit modal
 const vm=document.getElementById("visitModal");
@@ -1634,6 +1829,7 @@ function bootUser(){
   processEvents();
   notifyRivals();
   if(window._pendingRival){const c=window._pendingRival;window._pendingRival=null;setTimeout(()=>{importRival(c);showView("arena");},400);}
+  if(window._pendingGroup){const pg=window._pendingGroup;window._pendingGroup=null;setTimeout(()=>{const g=joinGroup(pg.id,pg.name,pg.code);activeGroupId=g.id;renderGroup();toast("👥 グループ「"+g.name+"」に参加しました！");showView("group");},400);}
 }
 function loginUser(name){ROOT.current=name;S=ROOT.users[name];save();bootUser();}
 document.getElementById("genderPick").addEventListener("click",e=>{
@@ -1674,13 +1870,21 @@ document.getElementById("todayLabel").textContent="📅 "+new Date().toLocaleDat
     history.replaceState(null,"",location.pathname+location.search);
     const code=m[1];const d=parseRivalCode(code);
     if(d&&d.n){
+      if(ROOT.current&&ROOT.users[ROOT.current]){setTimeout(()=>{if(importRival(code))showView("arena");},300);}
+      else{window._pendingRival=code;}
+    }
+  }
+})();
+// グループ招待リンクの処理（#group=DATA）
+(()=>{
+  const m=location.hash.match(/[#&]group=([^&\s]+)/);
+  if(m){
+    history.replaceState(null,"",location.pathname+location.search);
+    const data=parseGroupLink(m[1]);
+    if(data&&data.id&&data.name){
       if(ROOT.current&&ROOT.users[ROOT.current]){
-        // ログイン済み → すぐ追加
-        setTimeout(()=>{if(importRival(code))showView("arena");},300);
-      }else{
-        // ログイン前 → ログイン後に処理
-        window._pendingRival=code;
-      }
+        setTimeout(()=>{const g=joinGroup(data.id,data.name,data.code||"");activeGroupId=g.id;renderGroup();toast("👥 グループ「"+g.name+"」に参加しました！");showView("group");},300);
+      }else{window._pendingGroup={id:data.id,name:data.name,code:data.code||""};}
     }
   }
 })();
